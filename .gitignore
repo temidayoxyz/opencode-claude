@@ -1,0 +1,23 @@
+# Local feasibility downloads, raw API schemas, and disposable session probes.
+/research/
+/.tools/
+/.runtime/
+
+# Runtime data and credentials must never be distributed.
+/state/
+/secrets/
+/.env
+/.env.*
+!/.env.example
+*.dpapi
+*.db
+*.db-shm
+*.db-wal
+*.log
+
+# Build and dependency artifacts.
+/node_modules/
+/dist/
+/coverage/
+.DS_Store
+Thumbs.db
