@@ -1,5 +1,7 @@
 # Feasibility research
 
+Historical research for the earlier model-only approach. Since then, the user explicitly directed genuine OpenCode sessions, implemented in 0.2. Live free DeepSeek text and a real Claude terminal native-file task now pass. See [current compatibility](compatibility.md).
+
 Project: `opencode-claude`. Distribution target: GitHub only until the owner requests npm publication.
 
 Date: 2026-10-20. Runtime inspected locally: OpenCode CLI **2.0.32** on Windows.

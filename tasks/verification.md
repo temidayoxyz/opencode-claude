@@ -1,5 +1,20 @@
 # Verification record
 
+## Current: 0.2.0-dev.0, genuine sessions (2026-10-20)
+
+- The user's direction explicitly supersedes the earlier tool-execution design: OpenCode runs the agent/tools, Claude provides the interface. Default commands now use official SDK 2.0.32 attached to the normal service, with no system/tool/permission rewrites.
+- Strict TypeScript build and unused-code/fallthrough lint pass on Windows / Node 24.22.0. **28 unit/contract tests pass**, including native continuity, retry protection, branch isolation and concurrency reservation before asynchronous session creation.
+- Genuine OpenCode local fixture passes native write approval, no file before permission, one file write/result, multiple turns, completed retry replay, native question/form answers and Messages streaming.
+- Genuine native cancellation reaches the provider, leaves an independent conversation intact, and rejects a retry of the interrupted task without rerunning it. The OpenCode service remains healthy.
+- Actual Claude Code 2.1.296 launcher passes with Claude tools disabled and conflicting saved routing/auth settings loaded: OpenCode executes one native write, consumes the result and returns READY.
+- **Live free DeepSeek passes:** ordinary official SDK session returned READY; production `smoke --model opencode/deepseek-v4.1-flash-free` passed; actual production Claude terminal task created a disposable proof file containing exactly `READY_NATIVE_FREE` and returned READY. No paid fallback, provider header spoofing, network change or permission override was used.
+- Dependency audit reports **0 vulnerabilities** after adding the exact official SDK and its locked dependencies.
+- Desktop profile file/schema tests remain passing. Desktop chat/Code UI and macOS/Linux native clients are independently unverified. GitHub publication has not occurred, and npm registry publication remains disabled.
+
+The earlier record below is historical and describes the superseded model-only design; its free-access failure is not the current result.
+
+## Earlier: 0.1 model-only adapter
+
 Date: 2026-10-20. Version: 0.1.0-dev.1, experimental. Platform exercised: Windows.
 
 ## Passing evidence

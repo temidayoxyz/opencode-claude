@@ -1,5 +1,7 @@
 # Implementation plan: opencode-claude
 
+**Superseded execution boundary:** the user explicitly requested genuine OpenCode agent sessions on 2026-10-20. Version 0.2 now uses the official SDK with OpenCode executing tools and Claude providing the interface. Refer to the updated [specification](../SPEC.md) and [verification](verification.md); the older plan below describes the previous model-only approach.
+
 Status: **approved by the user on 2026-10-20; compatibility milestone in progress**.
 Scope and command flow approved: 2026-10-20.
 Specification: [SPEC.md](../SPEC.md).

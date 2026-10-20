@@ -1,54 +1,58 @@
 # Compatibility and evidence
 
-Recorded 2026-10-20. This is an experimental local integration, not an officially supported Anthropic integration for third-party models.
+Recorded 2026-10-20 for **0.2.0-dev.0**. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
 
 | Capability | Evidence |
 | --- | --- |
-| Node/TypeScript build | Passed on Windows, Node 24.22.0, TypeScript 6.0.3 |
-| OpenCode backend | Real native **2.0.32**, exact upstream contract pinned; other versions refused |
-| Messages text and SSE | Passing deterministic contract tests |
-| Tools and results | Original IDs/arguments/error results retained; parallel argument fragments validated |
-| Terminal Claude Code | **2.1.296** passed the actual `run claude` launcher against real OpenCode and a local fixture: one Claude `Write`, one consumed result, final `READY`, no OpenCode tool execution |
-| Cancellation/isolation | Real OpenCode concurrent requests passed; cancelling one terminated its provider request while the other completed |
-| CLI lifecycle | Concurrent starts reused one authenticated worker; setup/default/export and repeated stop passed in disposable state |
-| Desktop profile | Existing profile preservation, metadata backup and restore passed in disposable directories; schema inspected in Windows Desktop **2.42304.2.0** |
-| Desktop chat | **UI verification pending**; profile support is not a passing chat result |
-| Desktop Code tab | **UI verification pending**, independently of terminal Claude Code |
-| Real hosted free models | **Rejected for this converted adapter request**; the user confirms the same DeepSeek model works inside OpenCode. Current captured denial is the hosted free-tier client restriction, not a confirmed network block |
-| macOS/Linux | Portable code and unit-test CI configured; no passing native client or Desktop result recorded yet |
+| Windows runtime | Node 24.22.0, TypeScript 6.0.3, OpenCode 2.0.32 |
+| Official SDK connection | Attached to the existing service without changing configuration, permissions, tools or provider headers |
+| Live free text | `opencode/deepseek-v4.1-flash-free` returned READY through a normal SDK session and the production smoke command |
+| Real Claude Code + free model | Claude Code 2.1.296 used the production launcher with its own tools disabled; OpenCode/DeepSeek created a proof file with exact requested content and returned READY |
+| Native tools and permissions | Local fixture: permission shown, no file before approval, one native write after approval, result consumed, next turn continued the same session |
+| Retry safety | Completed requests replay; in-progress or failed requests are rejected without silently running actions again |
+| Cancellation/isolation | Genuine OpenCode provider disconnect verified; another conversation completes and the normal service remains healthy |
+| Gateway lifecycle | Concurrent starts reuse one authenticated worker; setup/catalog/default/export and owned shutdown pass without hosted inference |
+| Desktop profile | Preservation, backup and restore tested in disposable directories; Windows Desktop 2.42304.2.0 schema inspected |
+| Desktop chat / Code | **UI verification pending** separately for both tabs |
+| Other models | Catalog capability checks until a live test passes |
+| macOS / Linux | Portable source and unit/build CI configured; native-client verification pending |
 
-## Supported subset
+## Session behavior
 
-Text/system conversations, custom client tool definitions, tool use/results including errors, automatic tool selection, temperature/top-p, stop sequences, and nonstreaming/streaming Messages responses. Output effort is forwarded as OpenCode's generic `reasoningEffort`; actual interpretation depends on the provider. Prompt cache hints and metadata are not forwarded. Native Claude thinking budgets/blocks are not implemented.
+OpenCode owns system instructions, provider protocol, agent configuration, tools and history. New user text goes through `session.prompt`. The gateway does not rewrite OpenCode's request or register Claude tools. Claude terminal tools are disabled. Desktop tools are not invoked by this backend.
 
-The response hook currently requires **OpenAI Chat Completions SSE**. Catalog filtering permits the OpenCode openai-compatible, DeepSeek, and OpenRouter provider packages when enabled with tool support. That checks protocol suitability, not successful model access. Anthropic-native and Responses API provider formats are not translated in this version.
+Enabled, nondeprecated OpenCode models with agent tool support may use any provider protocol OpenCode supports. Listed free prices do not guarantee eligibility. Alias names do not make performance claims.
 
-Model text is forwarded as it arrives from the provider. Tool arguments are buffered, parsed and checked before emitting ordered native tool blocks; interleaved OpenAI parallel calls are not exposed as malformed native SSE. Usage reports provider counts when present; zero means unavailable before the provider reports it, not an independently measured token count. Exact token counting is not implemented.
+Native text deltas become Messages events. Native tool names appear as progress text. Reasoning traces and tool outputs are not exposed as fabricated Claude tool calls. Completed context reconciles missed text. Usage comes from OpenCode's reported model-step counts, including cached input; local progress/permission text is not independently token-counted.
 
-Images, PDFs/documents, video/audio, thinking blocks, structured output schemas, forced tool choice, deferred tool loading/tool references, server tools, context editing and native compaction payloads are explicitly rejected. Desktop features that depend on these are outside the tested subset. No promise is made about every agent, MCP server, plugin, or subscription feature.
+OpenCode generation settings govern the agent. Frontend system prompts, tool definitions, temperature, stop sequences and max-token settings are not imposed on the native request. Images, documents, frontend thinking blocks, server tools, structured output, Claude-native tools and automatic Desktop VM path mapping are unsupported.
 
-## Runtime and privacy
+The workspace is bound to a scoped credential at launch. Run from the desired host project directory. Desktop Code may still initialize its own workspace; OpenCode operates in the bound host directory.
 
-The gateway binds only to `127.0.0.1`, authenticates with a random per-user local key, rejects browser origins, bounds request/response sizes, and caps concurrent generations at eight. The native location/plugin cache is recycled between requests after 32 completed generations. A busy recycling boundary produces an explicit failure; it never interrupts another generation or chooses a fallback model.
+## Permissions and questions
 
-The native runtime uses its own database, empty workspaces, generated local password, project configuration disabled, and ordinary existing global OpenCode provider configuration/authentication. Arbitrary shell environment variables are not passed to the runtime. Providers that require environment-only credentials should be connected using OpenCode's credential store first. Trusted user-global OpenCode configuration/plugins still belong to the user's trust boundary.
+OpenCode permissions are inherited unchanged. Pending requests show the actual action/resources and a random response code. Exact replies `approve CODE` or `reject CODE` call the supported permission API with `once` or `reject`. No persistent allow rule is created. Native forms use explicit JSON answers or rejection. Codes belong to the pending session and are not forwarded to the model.
 
-Full caller context is supplied through the plugin rather than written as session history; only a fixed marker goes to the transient-generation API. The adapter registers caller tools but never executes them. Claude executes them under its normal permissions. There is no adapter retry or completed-action replay mechanism; a native client's retry policy remains its own.
+Configure permissions in OpenCode. Claude's flags cannot govern tools executed by OpenCode, so conflicting tool, agent and permission flags are rejected by the launcher.
 
-Application logs do not record prompts, response bodies or provider credentials. The native OpenCode runtime may maintain its own operational logs according to its configuration. Graceful shutdown deletes only the proven-owned adapter directory after its child exits. A crash may leave private runtime files for review; no broad cleanup of other OpenCode state is performed. Secrets/settings/backups live outside the checkout with restrictive POSIX modes or the Windows user profile's inherited ACLs; they are not DPAPI encrypted. Other processes running as the same user can access them.
+## History, retries and cancellation
 
-The normal user-managed OpenCode service is never stopped or reconfigured. `stop` requires the private local credential and matching gateway instance identity; it does not terminate arbitrary PIDs.
+Canonical frontend histories identify continuations within a launch. Client/model scopes and frontend user IDs isolate conversations. Exact completed requests replay without duplicating actions. A failed or cancelled attempt may already have performed actions; a retry returns an inspection message.
 
-## Free access and names
+Start a new frontend conversation after a gateway restart, relaunch, history compaction or editing an older branch. Unknown histories are rejected. Native conversations remain in OpenCode with title `opencode-claude`.
 
-Final installed-package check: `opencode/minimax-m3.1-flash-free` was absent from the refreshed catalog, so no inference was attempted for it. One explicit `opencode/deepseek-v4.1-flash-free` smoke request failed without a supported answer. Its gateway error did not establish a more specific cause; the earlier ordinary-OpenCode network refusal remains separate historical evidence. A later local 403 fixture verifies that provider HTTP status is preserved without disclosing bodies. No additional hosted retry was made. Setup clears unavailable saved defaults; doctor reports a missing/unavailable selection.
+Limits: eight concurrent sessions, 256 conversations and 2,048 request records per gateway lifetime, bounded reply cache and bodies, 30 minutes per turn. Full caches return explicit errors. Terminal/smoke credentials expire after seven days; Desktop credentials after one year. Relaunch/export to renew them.
 
-**Subsequent diagnosis:** the user confirmed this DeepSeek entry works in OpenCode itself. One controlled request with bounded, redacting error classification identified `client_only`: the hosted free endpoint rejected the converted adapter/client request. This does not establish a permanent network ban. Version 0.1.0-dev.1 distinguishes known client/network/region refusals and preserves early provider denials as HTTP 403 instead of turning them into successful streams or retryable server failures. No tool names, permissions, client identities or headers were fabricated to satisfy the hosted check.
+Cancellation interrupts only the matching owned session. Shutdown interrupts owned active/waiting sessions, never stops the normal OpenCode service and never kills unrelated process IDs.
 
-A separate launcher defect was reproduced with real Claude Code: saved settings `env` values took precedence over process environment routing. The launcher now passes private `--settings` overrides for its session and uses only the local bearer token, with the API-key value empty. The real tool round trip passes with intentionally conflicting saved settings loaded from a disposable Claude configuration directory. Native thinking remains unsupported, and managed policies remain authoritative.
+## Privacy and setup
 
-OpenChamber and OpenWork demonstrate using a genuine OpenCode backend, not a guarantee that hosted free endpoints accept every external workflow. This implementation uses supported versioned OpenCode session/plugin interfaces. It does not impersonate a different client, rotate networks, or defeat provider checks. The free-tier/network refusal and tool-shape eligibility concerns are described in [the research report](FEASIBILITY.md).
+Loopback HTTP is authenticated and browser origins are rejected. Each frontend has a model/workspace-scoped token that cannot call management endpoints. Stored scopes contain token hashes and context, not provider keys. The master management key stays outside frontend settings.
 
-The neutral `claude-sonnet-4-6-oc-...` identifier is a Desktop/client compatibility alias, derived from the exact provider/model key. It does not mean the underlying model is Sonnet or has Sonnet performance. Desktop displays its actual model name. No Claude subscription entitlement is unlocked.
+OpenCode stores actual prompts, tool activity and conversations in its normal database. Its plugins and project/global instructions remain part of the user's trust boundary. This supersedes the earlier stateless/private-runtime description. The gateway does not log prompts, provider bodies or keys. Files use restrictive POSIX modes or inherited Windows user ACLs; they are not DPAPI encrypted.
 
-Before claiming full free-model compatibility, record an eligible live model test, then a real terminal tool task and separate Desktop chat/Code tests on that provider. A fixture pass cannot establish those results.
+Terminal routing uses a local bearer token and an empty API-key value. Private session settings override conflicting saved routing values without modifying saved files; managed policy remains authoritative. Desktop's separate profile contains its scoped local credential. Do not share it.
+
+## Historical diagnosis
+
+Version 0.1 replaced the system context and tool definitions for transient generation. Fixtures passed, but the free endpoint rejected that converted request. The user correctly requested the native-session design used by OpenCode frontends. Version 0.2 preserves genuine native behavior, and live free DeepSeek text and file checks now pass here. This is evidence for this model and environment, not a promise about every provider's access policy.

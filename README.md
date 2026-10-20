@@ -1,12 +1,12 @@
 # opencode-claude
 
-Use your own OpenCode models through a local gateway for Claude Code and Claude Desktop.
+Use Claude as the interface to a genuine OpenCode agent session. OpenCode runs the selected model and executes its tools under your OpenCode configuration and permissions.
 
-**Experimental version 0.1.0-dev.1.** The real Claude Code tool round trip passes with OpenCode and a deterministic local fixture. Desktop profile setup is implemented; Desktop chat and Code UI checks are pending. The hosted free service currently **rejects this model-only adapter request**, even though the same model can work inside OpenCode. Fixture success does not establish hosted free-tier compatibility.
+**Experimental 0.2.0-dev.0.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
 
 ## Install from GitHub
 
-Requires **Node 24 LTS**, **OpenCode 2.0.32**, and your chosen Claude client. Connect providers in OpenCode first. After this repository is published, replace `YOUR-ACCOUNT` below:
+Requires Node 24 LTS, OpenCode 2.0.32 and your chosen Claude client. Connect providers in OpenCode first. After the repository is published, replace `YOUR-ACCOUNT`:
 
 ```sh
 git clone https://github.com/YOUR-ACCOUNT/opencode-claude.git
@@ -18,14 +18,17 @@ npm install --global . --ignore-scripts
 opencode-claude setup
 ```
 
-Distribution is GitHub only. npm is used as a local build/installation tool; no npm registry publication is configured. A compiled `.tgz` can also be installed from a GitHub release. See [installation, updates and uninstall](docs/install.md).
+GitHub is the distribution channel. npm builds and installs local files; registry publication is disabled. A built `.tgz` can also be installed from a GitHub release. See [installation and updates](docs/install.md).
 
 ## Choose a model and launch
 
+Run from the project directory you want OpenCode to work in:
+
 ```sh
 opencode-claude models --free
+opencode-claude smoke --model opencode/deepseek-v4.1-flash-free
 opencode-claude run claude --model opencode/deepseek-v4.1-flash-free
-opencode-claude run desktop --model opencode/glm-5.3-flash-free
+opencode-claude run desktop --model opencode/deepseek-v4.1-flash-free
 ```
 
 Or save a default:
@@ -36,42 +39,53 @@ opencode-claude run claude
 opencode-claude run desktop
 ```
 
-The examples use catalog model names, not guaranteed free access. `models --free` reports listed zero input/output prices. Each person runs their own gateway with their own OpenCode provider credentials and quotas.
+`models --free` means OpenCode lists zero input/output prices. It does not promise access. Every user supplies their own eligible OpenCode account, connections and quotas. No model fallback is selected by this gateway.
 
-Each launch starts the gateway if needed. Terminal and Desktop can use different selections simultaneously. A launch override leaves the saved default unchanged. Neutral Claude-shaped aliases are compatibility identifiers; they do not claim the selected model is Sonnet or Opus.
+## Tools and permissions
 
-```sh
-opencode-claude doctor
-opencode-claude smoke --model opencode/deepseek-v4.1-flash-free
-opencode-claude stop
+Claude's terminal tools are disabled for this launch. OpenCode receives your user prompts and owns the model instructions, history, agents and tools. Configure tools, permissions and generation limits in **OpenCode**.
+
+When OpenCode requests permission, the response shows the action and resources. Reply with the displayed code:
+
+```text
+approve A1B2C3D4E5F6
 ```
 
-`doctor` does not call a hosted model. `smoke` makes an explicit inference request and records a text-only result; provider billing/access rules apply. There is no gateway-selected fallback to another model. `protocol OK` in `models` only describes the implemented wire format, not provider acceptance.
+Or `reject A1B2C3D4E5F6`. Approval applies once to that pending request. Native questions use `answer CODE {"field":"value"}` as shown in the response. Codes are handled locally and are never sent to the model as approval instructions.
 
-## What works and what is limited
+Progress appears as text such as `[OpenCode tool: write]`. These are OpenCode actions, rather than Claude-native executable tool cards. The workspace is the host directory from which you launched the command. Desktop Code's VM workspace is not automatically mapped to it.
 
-- **Claude Code 2.1.296:** the actual launcher passed a fixture-backed file-write/tool-result task through real OpenCode, with Claude executing the action once and OpenCode executing no tool.
-- **Desktop:** dedicated profile, backup, restore and version checks are implemented for Windows Desktop 2.42304.2.0. Other platforms/versions export a private profile for manual setup. Existing profiles are preserved, and an open app is never terminated. Desktop chat and Code still require separate UI verification.
-- **Protocol:** text, custom client tools, tool results and Chat Completions SSE. Images/documents, native thinking, server tools, structured-output schemas and other unsupported payloads fail explicitly. Disable Desktop extended thinking. See the full [compatibility matrix](docs/compatibility.md).
-- **Free models:** provider eligibility, quotas and network restrictions remain in force. No live free-model workflow is advertised as passing until an eligible end-to-end check succeeds.
+## What has been tested
+
+- Real Claude Code with free DeepSeek: text and a native file task passed.
+- Local native OpenCode tests: permission relay, one file write, tool-result consumption, multiple turns and retry replay passed.
+- Windows Desktop 2.42304.2.0: dedicated profile, backup and restore are implemented and tested as file operations. Chat and Code UI checks remain pending.
+- Text and Messages streaming are supported. Images, documents, frontend thinking blocks, server tools and structured output are outside the current subset. Disable extended thinking in Desktop.
+
+Start a new Claude conversation after restarting the gateway, relaunching a client, editing an older branch or compacting its history. Native conversations remain saved in OpenCode. Unknown histories are rejected. See [compatibility](docs/compatibility.md).
 
 ## How it works
 
 ```text
 Claude Code / Claude Desktop
-        | native Messages API, local credential
-opencode-claude (127.0.0.1)
-        | genuine OpenCode session + supported plugin hooks
-owned OpenCode 2.0.32 runtime
-        | existing user provider connection
-selected model
+        | local authenticated Messages API
+opencode-claude on 127.0.0.1
+        | official @opencode/client SDK
+normal OpenCode 2.0.32 service
+        | session.prompt -> agent -> native tools -> model
+selected eligible provider/model
 ```
 
-The plugin supplies the caller's full conversation and actual tools to transient generation. The gateway translates actual model responses into native Messages events; Claude keeps responsibility for executing tools under its own permissions. There is no nested OpenCode agent executing duplicate actions.
+The gateway attaches to the normal OpenCode service. If absent, it starts OpenCode's ordinary service command. It does not replace or reconfigure an existing service. `stop` stops this gateway and interrupts its own active sessions; the OpenCode service and saved conversations remain.
 
-The user-managed OpenCode service is preserved. Application state is outside the checkout. The gateway does not log prompts or provider keys and does not copy provider credentials into source. The local gateway key and exported Desktop profile are private files; do not share them.
+Saved Claude settings are preserved. The terminal launcher uses private temporary routing settings. Desktop gets a dedicated reversible profile. Credentials and scope records live outside the checkout. OpenCode stores session history under its own configuration; this is not stateless inference.
 
-OpenCode's versioned API is pinned because its v2 interfaces differ from older SDK examples. This project does not unlock Claude subscription entitlements, impersonate clients, or bypass hosted-service access checks. Anthropic documents [gateway connection methods](https://code.claude.com/docs/en/llm-gateway-connect), but does not officially support non-Claude model routing.
+```sh
+opencode-claude doctor
+opencode-claude stop
+```
+
+`doctor`, `models` and `setup` do not make hosted inference requests. `smoke` explicitly makes a text request. Claude-shaped aliases are routing identifiers, not Sonnet/Opus quality claims. Provider restrictions and subscription entitlements are unchanged.
 
 ## Development
 
@@ -84,8 +98,6 @@ npm run test:runtime
 npm run test:claude
 ```
 
-The last two commands require the pinned native OpenCode binary; the last also requires Claude Code. They use local fixture models, not hosted inference. GitHub unit/build checks are configured for Windows, macOS and Linux. Actual native-client evidence currently comes from Windows.
+Runtime checks use local fixtures and pinned OpenCode; the last also needs Claude Code. Older model-only experiments remain under `test:legacy` for comparison and are not used by normal commands.
 
-Research and design: [feasibility](docs/FEASIBILITY.md), [tool evidence](docs/tool-compatibility.md), [specification](SPEC.md). OpenChamber and OpenWork informed the managed-runtime research; this implementation is original and does not bundle their code. OpenCode and Claude are third-party products, not sponsors of this project.
-
-MIT licensed. No public GitHub repository or npm release has been published by this local build.
+See the [specification](SPEC.md), [current evidence](docs/compatibility.md) and [changelog](CHANGELOG.md). OpenChamber and OpenWork informed this approach; their code is not bundled. Independent, MIT licensed. No public GitHub repository or npm package has been published by this local build.

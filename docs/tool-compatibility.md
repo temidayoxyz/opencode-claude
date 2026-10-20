@@ -1,5 +1,7 @@
 # Native tool compatibility experiment
 
+**Historical model-only experiment, superseded in 0.2.** Current commands use genuine OpenCode sessions and native tools. Live free DeepSeek text and a real Claude terminal native-file task now pass. See [current evidence](compatibility.md). Statements below describe the earlier experiment only.
+
 Status: **PASS for the bounded local runtime experiment. The production gateway now also passes a real Claude Code tool task; hosted free-model access remains blocked/unverified.**
 Date: 2026-10-20.
 

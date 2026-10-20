@@ -1,5 +1,7 @@
 # Proposed tasks: opencode-claude
 
+**0.2 update:** the user's native-session direction supersedes the earlier Claude-executes-tools requirements below. Genuine OpenCode sessions, native tool execution, permission/form relay, continuity and retry protection are implemented. Live free DeepSeek text and an actual Claude terminal native-file task pass. Desktop chat/Code UI and other platforms remain open; GitHub/npm publication has not occurred. See [current verification](verification.md).
+
 Status: **experimental implementation and local installation complete on 2026-10-20. Tasks 01–09 pass locally; Desktop UI and eligible live free-model acceptance remain validation gates. No public publication performed.**
 Plan: [plan.md](plan.md). Specification: [SPEC.md](../SPEC.md).
 
