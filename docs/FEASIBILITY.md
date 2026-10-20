@@ -8,7 +8,7 @@ Date: 2026-10-20. Runtime inspected locally: OpenCode CLI **2.0.32** on Windows.
 
 OpenChamber and OpenWork demonstrate that a separately distributed application can use OpenCode as its local agent backend. They do not establish that OpenCode can act as a drop-in model endpoint for Claude Desktop. That requires an additional protocol and tool-execution adapter.
 
-No working Claude bridge has been implemented or validated. Free-model testing currently has a hosted-service network blocker. The project must keep these two uncertainties separate.
+**Implementation update (2026-10-20):** the native Messages gateway and launch commands are implemented. The real terminal Claude Code launcher has passed a tool/result round trip through OpenCode 2.0.32 and a local fixture. Desktop profile tests pass; Desktop UI checks remain pending. Free-model testing still has the hosted-service network blocker. See the current [compatibility matrix](compatibility.md); the following research records the earlier feasibility investigation.
 
 ## Two Claude clients
 

@@ -19,5 +19,7 @@
 /node_modules/
 /dist/
 /coverage/
+/.release/
+*.tgz
 .DS_Store
 Thumbs.db
