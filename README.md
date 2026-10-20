@@ -2,7 +2,7 @@
 
 Use your own OpenCode models through a local gateway for Claude Code and Claude Desktop.
 
-**Experimental version 0.1.0-dev.0.** The real Claude Code tool round trip passes with OpenCode and a deterministic local fixture. Desktop profile setup is implemented; Desktop chat and Code UI checks are pending. Hosted free-model access is **not verified**: the development network is currently blocked by OpenCode's hosted free service. This software cannot remove that restriction.
+**Experimental version 0.1.0-dev.1.** The real Claude Code tool round trip passes with OpenCode and a deterministic local fixture. Desktop profile setup is implemented; Desktop chat and Code UI checks are pending. The hosted free service currently **rejects this model-only adapter request**, even though the same model can work inside OpenCode. Fixture success does not establish hosted free-tier compatibility.
 
 ## Install from GitHub
 
@@ -46,7 +46,7 @@ opencode-claude smoke --model opencode/deepseek-v4.1-flash-free
 opencode-claude stop
 ```
 
-`doctor` does not call a hosted model. `smoke` makes an explicit inference request and records a text-only result; provider billing/access rules apply. There is no gateway-selected fallback to another model.
+`doctor` does not call a hosted model. `smoke` makes an explicit inference request and records a text-only result; provider billing/access rules apply. There is no gateway-selected fallback to another model. `protocol OK` in `models` only describes the implemented wire format, not provider acceptance.
 
 ## What works and what is limited
 

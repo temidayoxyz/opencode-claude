@@ -80,7 +80,7 @@ async function main(): Promise<void> {
     const selected = models.filter(model => !args.includes('--free') || model.free);
     if (args.includes('--json')) console.log(JSON.stringify(selected, null, 2));
     else {
-      for (const model of selected) console.log(`${model.supported ? 'supported' : 'unsupported'}\t${model.free ? 'listed free' : 'check pricing'}\t${model.key}`);
+      for (const model of selected) console.log(`${model.supported ? 'protocol OK' : 'unsupported'}\t${model.free ? 'listed free' : 'check pricing'}\t${model.key}`);
       console.log('\nCatalog and protocol status only; access is unverified until a smoke test passes.');
     }
     return;

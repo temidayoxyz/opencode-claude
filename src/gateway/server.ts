@@ -3,6 +3,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { OpenCodeAdapter, ModelTarget } from '../opencode/adapter.js';
 import { parseMessagesRequest, RequestError } from './messages.js';
 import { MessageStream } from './stream.js';
+import { ProviderError } from '../opencode/access.js';
 
 export interface GatewayOptions {
   adapter: OpenCodeAdapter;
@@ -23,7 +24,10 @@ function json(response: ServerResponse, status: number, value: unknown): void {
   response.end(JSON.stringify(value));
 }
 function error(response: ServerResponse, status: number, message: string): void {
-  json(response, status, { type: 'error', error: { type: status === 400 ? 'invalid_request_error' : 'api_error', message } });
+  json(response, status, { type: 'error', error: { type: errorType(status), message } });
+}
+function errorType(status: number): string {
+  return status === 400 ? 'invalid_request_error' : status === 403 ? 'permission_error' : status === 429 ? 'rate_limit_error' : 'api_error';
 }
 async function body(request: IncomingMessage): Promise<unknown> {
   let size = 0;
@@ -40,6 +44,9 @@ async function body(request: IncomingMessage): Promise<unknown> {
 // Error bodies never include a raw upstream payload, local prompt, or credential.
 export function providerFailure(cause: unknown): string {
   const message = cause instanceof Error ? cause.message : '';
+  if (/restriction=client_only\b/.test(message)) return 'OpenCode hosted free tier rejected this adapter/client request. The model may still work inside OpenCode itself.';
+  if (/restriction=network\b/.test(message)) return 'OpenCode hosted service rejected the current network. This is the provider-reported restriction; no fallback was used.';
+  if (/restriction=region\b/.test(message)) return 'The provider reported a regional access restriction. No fallback was used.';
   if (/403|FreeTierError|abusive|not available.*network/i.test(message)) return 'OpenCode/provider denied access. Check eligibility or network restrictions in OpenCode; no fallback was used.';
   if (/429|rate.?limit|quota/i.test(message)) return 'OpenCode/provider rate limit reached. Wait and retry; no fallback was used.';
   if (/401|credential|unauthorized/i.test(message)) return 'OpenCode/provider authentication failed. Connect the provider in OpenCode.';
@@ -89,9 +96,13 @@ export async function createGateway(options: GatewayOptions) {
         }
       };
       if (parsed.stream) {
-        // Flush early and keep slow eligible providers alive. No synthetic model tokens.
-        await write('ping', { type: 'ping' });
-        ping = setInterval(() => { if (!response.destroyed && !response.writableNeedDrain) response.write('event: ping\ndata: {"type":"ping"}\n\n'); }, 15000);
+        // Keep slow providers alive, but preserve early HTTP denials as HTTP
+        // errors rather than committing a misleading successful stream first.
+        ping = setInterval(() => {
+          if (response.destroyed || response.writableNeedDrain) return;
+          if (!response.headersSent) response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' });
+          response.write('event: ping\ndata: {"type":"ping"}\n\n');
+        }, 15000);
       }
       const stream = new MessageStream(parsed.model, parsed.tools.map((tool) => tool.name), parsed.stream ? write : undefined);
       await options.adapter.generate(source, target, (frame) => stream.frame(frame), controller.signal);
@@ -101,8 +112,9 @@ export async function createGateway(options: GatewayOptions) {
       request.resume();
       if (!response.destroyed) {
         const message = cause instanceof RequestError ? cause.message : providerFailure(cause);
-        if (response.headersSent) response.end(`event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: 'api_error', message } })}\n\n`);
-        else error(response, cause instanceof RequestError ? 400 : 502, message);
+        const status = cause instanceof RequestError ? 400 : cause instanceof ProviderError && [403, 429].includes(cause.status) ? cause.status : 502;
+        if (response.headersSent) response.end(`event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: errorType(status), message } })}\n\n`);
+        else error(response, status, message);
       }
     } finally {
       clearTimeout(timeout); clearInterval(ping); controllers.delete(controller);

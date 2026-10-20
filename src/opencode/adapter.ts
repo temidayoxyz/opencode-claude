@@ -5,6 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseMessagesRequest } from '../gateway/messages.js';
 import { launchRuntime, type RunningRuntime } from './runtime.js';
+import { ACCESS_REASONS, ProviderError, type AccessReason } from './access.js';
 
 export interface ModelTarget { providerID: string; id: string }
 export interface AdapterOptions {
@@ -20,6 +21,7 @@ interface ActiveRequest {
   consume: Consumer;
   frames: number;
   failureStatus?: number;
+  failureReason?: AccessReason;
   controller: AbortController;
 }
 export interface OpenCodeAdapter {
@@ -82,6 +84,7 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
         if (url.pathname === '/failure') {
           if (!Number.isInteger(event.status) || Number(event.status) < 400 || Number(event.status) > 599) return json(response, 400, { error: 'invalid_status' });
           current.failureStatus = Number(event.status);
+          if (ACCESS_REASONS.includes(event.reason as AccessReason)) current.failureReason = event.reason as AccessReason;
           return json(response, 200, { accepted: true });
         }
         await current.consume(event.frame);
@@ -190,7 +193,7 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
           }, combined);
           if (!current.frames) throw new Error('The model did not produce a supported HTTP response');
         } catch (cause) {
-          if (current.failureStatus) throw new Error(`Provider returned ${current.failureStatus}`);
+          if (current.failureStatus) throw new ProviderError(current.failureStatus, current.failureReason);
           throw cause;
         } finally {
           signal?.removeEventListener('abort', forwardAbort);

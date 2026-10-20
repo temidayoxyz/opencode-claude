@@ -1,5 +1,6 @@
 import { parseMessagesRequest, type ParsedMessages } from '../gateway/messages.js';
 import { readSSE } from './sse.js';
+import { responseAccessReason } from './access.js';
 
 // A versioned projection of the public Promise plugin contracts. No SDK runtime
 // package is needed: https://github.com/anomalyco/opencode/tree/v2.0.32/packages/plugin/src/promise
@@ -58,9 +59,10 @@ export default {
     await context.session.hook('http.response', async (event) => {
       if (event.kind !== 'generate') return;
       if (!event.response.ok) {
+        const reason = event.response.status === 403 ? await responseAccessReason(event.response) : 'unknown';
         const accepted = await fetch(new URL('/failure', endpoint), {
           method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(5000),
-          body: JSON.stringify({ directory, sessionID: event.sessionID, status: event.response.status }),
+          body: JSON.stringify({ directory, sessionID: event.sessionID, status: event.response.status, reason }),
         });
         await accepted.arrayBuffer();
         if (!accepted.ok) throw new Error(`Local status consumer stopped: ${accepted.status}`);

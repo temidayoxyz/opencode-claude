@@ -1,11 +1,11 @@
 # Verification record
 
-Date: 2026-10-20. Version: 0.1.0-dev.0, experimental. Platform exercised: Windows.
+Date: 2026-10-20. Version: 0.1.0-dev.1, experimental. Platform exercised: Windows.
 
 ## Passing evidence
 
 - Strict TypeScript check, unused-code/fallthrough lint and production build pass with Node 24.22.0 / npm 11.19.1.
-- **24 unit/contract tests pass**, including native event order, parallel tool arguments, malformed/truncated generations, tool errors, body limits, authentication/origin policy, disconnect isolation, secret-creation races, profile preservation/restore, model selection, ownership and explicit smoke result recording.
+- **26 unit/contract tests pass**, including native event order, parallel tool arguments, malformed/truncated generations, tool errors, body limits, authentication/origin policy, disconnect isolation, secret-creation races, profile preservation/restore, model selection, ownership, explicit smoke result recording, precise denial categories and early HTTP 403 propagation.
 - The clean local Git clone built with `npm ci --ignore-scripts`, lint and build, and the final checkout passed all 24 tests before packaging.
 - Real OpenCode 2.0.32: typed runtime, complete conversation/tool-result adapter and bounded-cache recycle checked. The adapter check crosses 32 completed generations and successfully generates again after recycling.
 - Real OpenCode cancellation: one waiting provider call is actually cancelled while a separate concurrent generation completes. This is distinct from the HTTP-only disconnect test.
@@ -17,6 +17,8 @@ Date: 2026-10-20. Version: 0.1.0-dev.0, experimental. Platform exercised: Window
 - Desktop package/executable discovery and schema were checked against Windows Desktop **2.42304.2.0**. Dedicated profile backup/preservation/restore tests pass in disposable directories. The user's active existing Desktop provider selection was not replaced during verification.
 
 ## Open gates
+
+**Follow-up diagnosis:** the user's native OpenCode session works. The current converted request was classified as a hosted free-tier client restriction after one controlled diagnostic attempt, so the earlier network refusal is not an explanation for this specific failure. The independent saved-settings override defect was reproduced and fixed; the real native tool fixture passes with conflicting saved routing/auth settings loaded. The fix uses a private session settings file and bearer-only gateway authentication, without modifying user files. It does not make the hosted free endpoint accept the converted request.
 
 - Desktop chat UI and Desktop Code tab remain independently unverified. Native UI control is unavailable in this environment. Configuration support is not reported as a passing Desktop workflow.
 - No eligible hosted free-model end-to-end pass exists. Earlier ordinary official OpenCode sessions reported a network abuse-detection refusal; no attempt was made to defeat it, and no repeated denied inference or paid fallback was used during these checks. Provider tool-shape eligibility is also not guaranteed by local fixture success.

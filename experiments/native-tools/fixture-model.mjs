@@ -78,7 +78,7 @@ export async function createFixture(options = {}) {
       if (req.method === 'POST' && route === '/v1/chat/completions') {
         const body = await json(req);
         modelRequests++;
-        if (options.status) return respond(res, options.status, { error: { type: 'fixture_denial', message: 'PRIVATE_PROVIDER_BODY' } });
+        if (options.status) return respond(res, options.status, { error: options.error ?? { type: 'fixture_denial', message: 'PRIVATE_PROVIDER_BODY' } });
         lastModelStream = Boolean(body.stream);
         customContextReceived = JSON.stringify(body.messages).includes('FIXTURE_CONTEXT_MARKER')
           && body.messages.some((message) => message.role === 'assistant' && message.content === 'Fixture previous reply');

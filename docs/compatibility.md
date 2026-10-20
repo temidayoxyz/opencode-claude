@@ -14,7 +14,7 @@ Recorded 2026-10-20. This is an experimental local integration, not an officiall
 | Desktop profile | Existing profile preservation, metadata backup and restore passed in disposable directories; schema inspected in Windows Desktop **2.42304.2.0** |
 | Desktop chat | **UI verification pending**; profile support is not a passing chat result |
 | Desktop Code tab | **UI verification pending**, independently of terminal Claude Code |
-| Real hosted free models | **Blocked/unverified** on this development network; an ordinary official OpenCode session reported a network abuse-detection restriction |
+| Real hosted free models | **Rejected for this converted adapter request**; the user confirms the same DeepSeek model works inside OpenCode. Current captured denial is the hosted free-tier client restriction, not a confirmed network block |
 | macOS/Linux | Portable code and unit-test CI configured; no passing native client or Desktop result recorded yet |
 
 ## Supported subset
@@ -42,6 +42,10 @@ The normal user-managed OpenCode service is never stopped or reconfigured. `stop
 ## Free access and names
 
 Final installed-package check: `opencode/minimax-m3.1-flash-free` was absent from the refreshed catalog, so no inference was attempted for it. One explicit `opencode/deepseek-v4.1-flash-free` smoke request failed without a supported answer. Its gateway error did not establish a more specific cause; the earlier ordinary-OpenCode network refusal remains separate historical evidence. A later local 403 fixture verifies that provider HTTP status is preserved without disclosing bodies. No additional hosted retry was made. Setup clears unavailable saved defaults; doctor reports a missing/unavailable selection.
+
+**Subsequent diagnosis:** the user confirmed this DeepSeek entry works in OpenCode itself. One controlled request with bounded, redacting error classification identified `client_only`: the hosted free endpoint rejected the converted adapter/client request. This does not establish a permanent network ban. Version 0.1.0-dev.1 distinguishes known client/network/region refusals and preserves early provider denials as HTTP 403 instead of turning them into successful streams or retryable server failures. No tool names, permissions, client identities or headers were fabricated to satisfy the hosted check.
+
+A separate launcher defect was reproduced with real Claude Code: saved settings `env` values took precedence over process environment routing. The launcher now passes private `--settings` overrides for its session and uses only the local bearer token, with the API-key value empty. The real tool round trip passes with intentionally conflicting saved settings loaded from a disposable Claude configuration directory. Native thinking remains unsupported, and managed policies remain authoritative.
 
 OpenChamber and OpenWork demonstrate using a genuine OpenCode backend, not a guarantee that hosted free endpoints accept every external workflow. This implementation uses supported versioned OpenCode session/plugin interfaces. It does not impersonate a different client, rotate networks, or defeat provider checks. The free-tier/network refusal and tool-shape eligibility concerns are described in [the research report](FEASIBILITY.md).
 

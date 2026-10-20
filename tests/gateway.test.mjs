@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { createGateway } from '../dist/gateway/server.js';
+import { ProviderError } from '../dist/opencode/access.js';
 
 test('messages-text: gateway validates auth, origin, mappings and content', async () => {
   let calls = 0;
@@ -32,11 +33,14 @@ test('messages-text: gateway validates auth, origin, mappings and content', asyn
 
 test('conversation-isolation: disconnect aborts only the matching generation', async () => {
   const seen = new Map();
+  let entered;
+  const waiting = new Promise(resolve => { entered = resolve; });
   const gateway = await createGateway({ token: 'local-test', mappings: { alias: { providerID: 'fixture', id: 'text' } }, adapter: {
     async generate(source, target, consume, signal) {
       const text = source.messages[0].content;
       if (text === 'wait') {
         seen.set(text, signal);
+        entered();
         await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }));
         throw new Error('aborted');
       }
@@ -45,16 +49,30 @@ test('conversation-isolation: disconnect aborts only the matching generation', a
   } });
   try {
     const controller = new AbortController();
-    const slow = await fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': 'local-test' }, signal: controller.signal,
+    const slow = fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': 'local-test' }, signal: controller.signal,
       body: JSON.stringify({ model: 'alias', max_tokens: 10, stream: true, messages: [{ role: 'user', content: 'wait' }] }) });
-    const reader = slow.body.getReader();
-    await reader.read();
+    await waiting;
     controller.abort();
+    await assert.rejects(slow, /abort/i);
     for (let i = 0; i < 50 && !seen.get('wait')?.aborted; i++) await new Promise(r => setTimeout(r, 10));
     assert.equal(seen.get('wait')?.aborted, true);
     const fast = await fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': 'local-test' },
       body: JSON.stringify({ model: 'alias', max_tokens: 10, messages: [{ role: 'user', content: 'separate' }] }) });
     assert.equal((await fast.json()).content[0].text, 'separate');
+  } finally { await gateway.close(); }
+});
+
+test('provider-errors: early provider denial stays HTTP 403 so clients do not retry it as a server failure', async () => {
+  const gateway = await createGateway({ token: 'local-test', mappings: { alias: { providerID: 'fixture', id: 'text' } }, adapter: {
+    async generate() { throw new ProviderError(403, 'client_only'); },
+  } });
+  try {
+    const response = await fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': 'local-test' },
+      body: JSON.stringify({ model: 'alias', max_tokens: 10, stream: true, messages: [{ role: 'user', content: 'hello' }] }) });
+    assert.equal(response.status, 403);
+    const value = await response.json();
+    assert.equal(value.error.type, 'permission_error');
+    assert.match(value.error.message, /adapter\/client/);
   } finally { await gateway.close(); }
 });
 

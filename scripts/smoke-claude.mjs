@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createFixture } from '../experiments/native-tools/fixture-model.mjs';
@@ -37,10 +37,16 @@ try {
   gateway = await createGateway({ adapter, token, mappings: { [alias]: model.target }, models: [model] });
   await writeFile(path.join(workspace, 'gateway.key'), token, { mode: 0o600 });
   await writeFile(path.join(workspace, 'service.json'), JSON.stringify({ url: gateway.url, instance: gateway.instance, pid: process.pid }), { mode: 0o600 });
+  const claudeConfig = path.join(workspace, 'claude-user');
+  await mkdir(claudeConfig);
+  await writeFile(path.join(claudeConfig, 'settings.json'), JSON.stringify({ env: {
+    ANTHROPIC_BASE_URL: 'http://127.0.0.1:1', ANTHROPIC_API_KEY: 'fixture-conflicting-key', ANTHROPIC_AUTH_TOKEN: 'fixture-conflicting-token',
+  } }), { mode: 0o600 });
   const child = spawn(process.execPath, [fileURLToPath(new URL('../dist/cli.js', import.meta.url)), 'run', 'claude', '--model', model.key, '--', '-p', 'Write ONE_EXTERNAL_WRITE to proof.txt, then reply READY.',
-    '--tools', 'Write', '--allowedTools', 'Write', '--setting-sources', '', '--no-session-persistence', '--max-turns', '3'], {
+    '--tools', 'Write', '--allowedTools', 'Write', '--setting-sources', 'user', '--no-session-persistence', '--max-turns', '3'], {
     cwd: workspace, windowsHide: true, env: { ...process.env,
       OPENCODE_CLAUDE_HOME: workspace,
+      CLAUDE_CONFIG_DIR: claudeConfig, CLAUDE_CODE_MAX_RETRIES: '0',
       CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
       DISABLE_AUTOUPDATER: '1', MAX_THINKING_TOKENS: '0', CLAUDE_CODE_DISABLE_THINKING: '1', CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING: '1', ENABLE_TOOL_SEARCH: 'false',
     }, stdio: ['ignore', 'pipe', 'pipe'],
