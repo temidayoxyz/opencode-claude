@@ -1,6 +1,6 @@
 # Native tool compatibility experiment
 
-Status: **PASS for the bounded local runtime experiment; no Claude client or hosted free model tested**.
+Status: **PASS for the bounded local runtime experiment. The production gateway now also passes a real Claude Code tool task; hosted free-model access remains blocked/unverified.**
 Date: 2026-10-20.
 
 ## Environment
@@ -17,7 +17,7 @@ Date: 2026-10-20.
 3. **Transient model response without tool execution:** `session.generate` invokes the model with the registered tool schema. The official generation hook supplies a multi-turn conversation, which the fixture confirms it receives. The official `session.http.response` hook observes a clone of the provider response and captures its actual tool call. Neither the registered relay nor an external action is executed for that generation.
 4. **Cleanup:** the harness closes its fixture connections and stops only the child runtime it created. Its stop operation fails if that child remains alive.
 
-The transient-generation path is particularly useful for a Messages adapter: Claude can receive the actual model tool call and return its result in a later request, while OpenCode performs no tool action. The fixture showed that the provider response is streamed even though the public generation API ultimately returns only text. The experiment aggregates that stream for its assertion; live forwarding to Claude is not yet implemented.
+The transient-generation path is particularly useful for a Messages adapter: Claude can receive the actual model tool call and return its result in a later request, while OpenCode performs no tool action. The fixture showed that the provider response is streamed even though the public generation API ultimately returns only text. The original experiment aggregates that stream for its assertion. The production gateway now forwards provider text events live and validates/buffers parallel tool arguments before emitting native tool blocks.
 
 ## Reproduce
 
@@ -54,7 +54,7 @@ The initial verifier failed before the fixture/runtime implementation existed. A
 
 ## Boundaries and remaining work
 
-- This proves only the stated tool boundary with one deterministic tool and OpenAI Chat Completions response format. Arbitrary tool schemas, Claude's full message history, genuine Claude Code interaction, live client streaming, images, and other provider protocols are not yet verified.
+- The original experiment proves only its stated deterministic tool boundary. Subsequent production checks pass the full terminal `run claude` command with Claude Code 2.1.296: one actual Claude `Write`, one tool result consumed through real OpenCode, final `READY`, zero OpenCode tool executions. Parallel calls, conversation conversion, native SSE and malformed responses have contract tests. Images and other wire protocols remain unsupported; Desktop UI and live free-model access remain unverified. See [current evidence](compatibility.md).
 - The fixture plugin removes built-in tools solely to keep this isolated test from executing file, shell, or browser actions. This is not a method for establishing or bypassing a hosted provider's free-tier eligibility.
 - No provider API key was collected or copied, no hosted model was called, and no client-identity headers were fabricated.
 - Provider restrictions remain unchanged. The previously observed network block still prevents real OpenCode free-model acceptance testing here.

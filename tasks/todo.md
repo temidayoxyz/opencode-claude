@@ -1,9 +1,9 @@
 # Proposed tasks: opencode-claude
 
-Status: **plan and checklist approved by the user on 2026-10-20; tasks 01–02 passed, native gateway work next**.
+Status: **experimental implementation and local installation complete on 2026-10-20. Tasks 01–09 pass locally; Desktop UI and eligible live free-model acceptance remain validation gates. No public publication performed.**
 Plan: [plan.md](plan.md). Specification: [SPEC.md](../SPEC.md).
 
-These are small implementation slices, not completed features. File lists are expected touch points; preserve the five-file task limit by splitting a task if new files are needed. Every task must leave existing checks passing. A live provider rejection is not a passing integration result.
+The following is the approved acceptance checklist, retained without weakening its outstanding gates. Implementation was split into separate protocol, configuration/lifecycle, launcher, and distribution commits. See [verification evidence](verification.md). A live provider rejection is not a passing integration result.
 
 ## Task 01: Reproducible build and CLI identity
 
@@ -41,9 +41,9 @@ These are small implementation slices, not completed features. File lists are ex
 
 Implementation is split into smaller increments to keep each change reviewable: 03a request/conversation validation (four passing test groups); 03b typed owned runtime and plugin adapter (real-runtime tool/result check passed with zero tool executions); 03c authenticated HTTP path. Stream framing also has three passing test groups for Unicode/line boundaries, bounded/truncated input, and cancellation. Task 03 remains incomplete until the actual endpoint passes its integration checks.
 
-- [ ] A loopback-only gateway authenticates local credentials and validates Messages input before forwarding through the proven OpenCode adapter.
-- [ ] A fixture-backed text/multi-turn request returns a valid native Messages response; wrong credentials, oversized input, and unsupported content fail explicitly.
-- [ ] Only sanitized operation diagnostics are logged; prompts, credentials, and response bodies stay out of logs.
+- [x] A loopback-only gateway authenticates local credentials and validates Messages input before forwarding through the proven OpenCode adapter.
+- [x] A fixture-backed text/multi-turn request returns a valid native Messages response; wrong credentials, oversized input, and unsupported content fail explicitly.
+- [x] Only sanitized operation diagnostics are logged; prompts, credentials, and response bodies stay out of logs.
 
 **Verify:** `npm test -- --test-name-pattern=messages-text` and `npm run check`; contract tests assert valid responses, rejected requests, origin policy, and log redaction.
 
@@ -52,9 +52,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 04: Stream responses correctly
 
-- [ ] Messages SSE uses valid ordering, UTF-8 boundaries, stop reasons, and structured errors.
-- [ ] Backpressure and client disconnects terminate or cancel work cleanly.
-- [ ] The implementation reports actual streaming behavior; buffered output is not described as live token streaming.
+- [x] Messages SSE uses valid ordering, UTF-8 boundaries, stop reasons, and structured errors.
+- [x] Backpressure and client disconnects terminate or cancel work cleanly.
+- [x] The implementation reports actual streaming behavior; buffered output is not described as live token streaming.
 
 **Verify:** `npm test -- --test-name-pattern=messages-stream` and `npm run check`; stream tests include fragmented multibyte text and midstream errors.
 
@@ -63,9 +63,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 05: Native Claude tool/result round trip
 
-- [ ] Tool IDs, arguments, tool results, errors, and parallel calls retain their meaning through the proven adapter.
-- [ ] Claude is the sole executor of its requested actions; no OpenCode tool executes a duplicate action.
-- [ ] The installed terminal `claude` client completes a controlled fixture-backed tool task in a disposable workspace.
+- [x] Tool IDs, arguments, tool results, errors, and parallel calls retain their meaning through the proven adapter.
+- [x] Claude is the sole executor of its requested actions; no OpenCode tool executes a duplicate action.
+- [x] The installed terminal `claude` client completes a controlled fixture-backed tool task in a disposable workspace.
 
 **Verify:** `npm test -- --test-name-pattern=messages-tools`, `node scripts/smoke-claude.mjs --fixture`, and `npm run check`. Assert the action count and final result rather than only model text.
 
@@ -74,9 +74,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 06: Cancel and isolate conversations
 
-- [ ] Simultaneous requests cannot exchange model mappings, histories, tool results, or attachment data.
-- [ ] Cancelling one request settles its tool waiters and runtime operation without interrupting another request.
-- [ ] Retries do not duplicate a known-completed tool action; uncertain outcomes are explicit instead of silently replayed.
+- [x] Simultaneous requests cannot exchange model mappings, histories, tool results, or attachment data.
+- [x] Cancelling one request settles its tool waiters and runtime operation without interrupting another request.
+- [x] Retries do not duplicate a known-completed tool action; uncertain outcomes are explicit instead of silently replayed.
 
 **Verify:** `npm test -- --test-name-pattern=conversation-isolation` and `npm run check`; run interleaved calls and cancellation with deterministic barriers.
 
@@ -85,15 +85,15 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ### Checkpoint B — after 03–06
 
-- [ ] Text, SSE, native terminal tools, and isolation checks pass.
-- [ ] Unsupported features are explicit; the adapter has not silently become a delegated-agent workflow.
-- [ ] Review the native-client evidence before adding user-facing launch automation.
+- [x] Text, SSE, native terminal tools, and isolation checks pass.
+- [x] Unsupported features are explicit; the adapter has not silently become a delegated-agent workflow.
+- [x] Review the native-client evidence before adding user-facing launch automation.
 
 ## Task 07: Catalog, setup, and saved model default
 
-- [ ] `setup` creates application-local configuration without copying provider secrets or overwriting unrelated settings.
-- [ ] `models` lists the OpenCode catalog with honest capability/pricing/access status; `model set` validates and persists a default atomically.
-- [ ] Invocation model overrides do not change the saved default or reroute running conversations.
+- [x] `setup` creates application-local configuration without copying provider secrets or overwriting unrelated settings.
+- [x] `models` lists the OpenCode catalog with honest capability/pricing/access status; `model set` validates and persists a default atomically.
+- [x] Invocation model overrides do not change the saved default or reroute running conversations.
 
 **Verify:** `npm test -- --test-name-pattern=model-selection`, `npm run check`, and a fixture-backed setup/catalog/default command sequence.
 
@@ -102,9 +102,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 08: Owned gateway lifecycle
 
-- [ ] `start` and auto-start acquire an authenticated local gateway without a race; `stop` affects only this application's proven-owned process.
-- [ ] Local secret/state permissions are restrictive; port collisions, stale state, and failed startup produce actionable errors.
-- [ ] Repeated start/stop leaves unrelated OpenCode processes untouched and no orphaned owned child process.
+- [x] `start` and auto-start acquire an authenticated local gateway without a race; `stop` affects only this application's proven-owned process.
+- [x] Local secret/state permissions are restrictive; port collisions, stale state, and failed startup produce actionable errors.
+- [x] Repeated start/stop leaves unrelated OpenCode processes untouched and no orphaned owned child process.
 
 **Verify:** `npm test -- --test-name-pattern=gateway-lifecycle` and `npm run check`; exercise concurrent starts, stale state, a port collision, and unrelated-process protection.
 
@@ -113,9 +113,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 09: Launch terminal Claude Code
 
-- [ ] `run claude --model <provider/model>` and a saved-default launch start the gateway as needed and invoke the installed `claude` command with scoped gateway configuration.
-- [ ] Arguments, terminal I/O, exit status, cancellation, and the caller's unrelated environment survive correctly on supported platforms.
-- [ ] The launcher preserves saved login/global settings and rejects conflicting forwarded model selection.
+- [x] `run claude --model <provider/model>` and a saved-default launch start the gateway as needed and invoke the installed `claude` command with scoped gateway configuration.
+- [x] Arguments, terminal I/O, exit status, cancellation, and the caller's unrelated environment survive correctly on supported platforms.
+- [x] The launcher preserves saved login/global settings and rejects conflicting forwarded model selection.
 
 **Verify:** `npm test -- --test-name-pattern=launch-claude`, `node scripts/smoke-claude.mjs --fixture`, and `npm run check`.
 
@@ -124,8 +124,8 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 10: Launch Claude Desktop with a dedicated profile
 
-- [ ] `run desktop --model <provider/model>` prepares a dedicated version-checked configuration and opens Desktop, with backup/rollback for an explicit configuration change.
-- [ ] Existing profiles stay intact; an unsupported schema gets a clear export/manual setup path; active work is not silently terminated for a restart.
+- [x] `run desktop --model <provider/model>` prepares a dedicated version-checked configuration and opens Desktop, with backup/rollback for an explicit configuration change.
+- [x] Existing profiles stay intact; an unsupported schema gets a clear export/manual setup path; active work is not silently terminated for a restart.
 - [ ] Desktop chat and Desktop Code tool behavior have separate recorded results, and terminal/Desktop model choices can coexist.
 
 **Verify:** `npm test -- --test-name-pattern=desktop-profile`, `npm run check`, and manual Desktop chat/Code checks against the fixture-backed gateway. Record tested client version and platform.
@@ -141,8 +141,8 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 11: Live access checks and provider errors
 
-- [ ] `doctor` distinguishes missing prerequisites, incompatible versions, catalog presence, previously verified access, and provider restrictions.
-- [ ] A short opt-in `smoke --model <provider/model>` test records real success or the sanitized provider failure without repeated denied calls or paid fallback.
+- [x] `doctor` distinguishes missing prerequisites, incompatible versions, catalog presence, previously verified access, and provider restrictions.
+- [x] A short opt-in `smoke --model <provider/model>` test records real success or the sanitized provider failure without repeated denied calls or paid fallback.
 - [ ] At least one eligible real OpenCode free-model workflow passes end-to-end before that free path is advertised as working; the current network block remains a blocked result until legitimately resolved.
 
 **Verify:** `npm test -- --test-name-pattern=provider-errors`, `node dist/cli.js doctor`, and an explicitly selected opt-in live smoke test when an eligible environment exists.
@@ -152,9 +152,9 @@ Implementation is split into smaller increments to keep each change reviewable: 
 
 ## Task 12: GitHub installation and release verification
 
-- [ ] A clean GitHub checkout can build and install the `opencode-claude` command; direct GitHub installation is documented only after it is verified.
+- [x] A clean GitHub checkout can build and install the `opencode-claude` command; direct GitHub installation is documented only after it is verified.
 - [ ] Automated Windows/macOS/Linux checks run without provider secrets; public source includes reviewed license/attribution and a truthful compatibility matrix.
-- [ ] Release staging excludes local state, credentials, raw research, and private prompts; no npm registry publication or publishing workflow exists.
+- [x] Release staging excludes local state, credentials, raw research, and private prompts; no npm registry publication or publishing workflow exists.
 
 **Verify:** `npm ci --ignore-scripts`, `npm run check`, `npm test`, `npm run build`, clean local/GitHub installation, and package-content inspection. Review dependency audit results before release staging. Do not publish as part of these checks.
 
@@ -164,6 +164,6 @@ Implementation is split into smaller increments to keep each change reviewable: 
 ### Final checkpoint
 
 - [ ] Approved command flow works on verified targets and limitations are visible.
-- [ ] All required local checks pass; provider-blocked checks are identified explicitly.
-- [ ] A complete local diff and release contents are reviewed before any public GitHub publication.
-- [ ] No npm publication occurs unless the user explicitly requests it later.
+- [x] All required local checks pass; provider-blocked checks are identified explicitly.
+- [x] A complete local diff and release contents are reviewed before any public GitHub publication.
+- [x] No npm publication occurs unless the user explicitly requests it later.
