@@ -12,7 +12,7 @@ export function desktopProfile(connection: Connection, model: CatalogModel) {
   return { inferenceProvider: 'gateway', inferenceCredentialKind: 'static',
     inferenceGatewayBaseUrl: connection.url, inferenceGatewayApiKey: connection.token,
     chatTabEnabled: true, modelDiscoveryEnabled: false,
-    inferenceModels: [{ name: model.key, labelOverride: `${model.name} (OpenCode)`, anthropicFamilyTier: 'sonnet', isFamilyDefault: true }],
+    inferenceModels: [{ name: model.alias, labelOverride: `${model.name} (OpenCode)`, anthropicFamilyTier: 'sonnet', isFamilyDefault: true }],
   };
 }
 function metadata(value: unknown): Meta {

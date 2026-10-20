@@ -17,7 +17,8 @@ test('desktop-profile: apply preserves profiles, repeated changes retain restore
   const second = await applyProfile(root, root, connection, { ...model, name: 'Other' });
   assert.equal(first.id, second.id);
   const configured = JSON.parse(await readFile(path.join(root, first.id + '.json'), 'utf8'));
-  assert.equal(configured.inferenceModels[0].name, model.key);
+  assert.equal(configured.inferenceModels[0].name, model.alias);
+  assert.equal(configured.inferenceModels[0].labelOverride, 'Other (OpenCode)');
   assert.equal(await readFile(path.join(root, `${old}.json`), 'utf8'), '{"private":"preserve"}');
   assert.equal(JSON.parse(await readFile(path.join(root, '_meta.json'), 'utf8')).entries.length, 2);
   assert.equal(await restoreProfile(root), true);
