@@ -7,14 +7,16 @@ These are small implementation slices, not completed features. File lists are ex
 
 ## Task 01: Reproducible build and CLI identity
 
-- [ ] Resolve exact pinned development dependencies and verify the source/API version for the installed OpenCode runtime before choosing an SDK.
-- [ ] A Node 24 development environment can build strict TypeScript; the initial CLI provides truthful name/version/help output without pretending other commands work.
-- [ ] A checked-in lockfile supports script-disabled dependency installation; registry publication is disabled in package metadata.
+- [x] Resolve exact pinned development dependencies and verify the source/API version for the installed OpenCode runtime before choosing an SDK.
+- [x] A Node 24 development environment can build strict TypeScript; the initial CLI provides truthful name/version/help output without pretending other commands work.
+- [x] A checked-in lockfile supports script-disabled dependency installation; registry publication is disabled in package metadata.
 
 **Verify:** `npm ci --ignore-scripts`, `npm run check`, `npm run build`, and `npm test`. Initial tests cover observable CLI identity/help and unsupported-command failure.
 
 **Depends on:** reviewed plan/tasks.
 **Expected files (5):** `package.json`, `package-lock.json`, `tsconfig.json`, `src/cli.ts`, `tests/cli.test.ts`.
+
+**Evidence (2026-10-20):** Node 24.22.0 / npm 11.19.1; TypeScript 6.0.3 / Node types 24.10.0. Three CLI tests passed after the recorded missing-implementation failures; type check, build, frozen script-disabled install, and dependency audit passed. All three dependency registry signatures verified; one attestation verified. Tests use native `.mjs` files so the test harness does not need a transpiler. OpenCode source tag `v2.0.32` resolves to commit `843a6c514e606b436a7fe713422ace0a93ad3d61`; matching official client/plugin packages exist, but neither is required by the initial CLI. Script policy and line-ending configuration are a separate tooling increment.
 
 ## Task 02: Isolated OpenCode tool-boundary experiment
 
