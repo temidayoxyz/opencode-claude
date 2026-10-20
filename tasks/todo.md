@@ -1,3 +1,9 @@
+# Current status
+
+Experimental 0.2.0-dev.2 includes native sessions, durable restart protection and corrected Desktop routes/token validation. See [compatibility](../docs/compatibility.md) for current evidence and remaining UI/platform checks. The checklist below records the original model-only plan and its subsequent native-session migration; it is retained as development history.
+
+---
+
 # Proposed tasks: opencode-claude
 
 **0.2 update:** the user's native-session direction supersedes the earlier Claude-executes-tools requirements below. Genuine OpenCode sessions, native tool execution, permission/form relay, continuity and retry protection are implemented. Live free DeepSeek text and an actual Claude terminal native-file task pass. Desktop chat/Code UI and other platforms remain open; GitHub/npm publication has not occurred. See [current verification](verification.md).

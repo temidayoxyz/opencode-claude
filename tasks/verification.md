@@ -1,3 +1,13 @@
+# Current release verification: 0.2.0-dev.2
+
+2026-10-20: strict build/lint and 41 unit tests pass. Genuine OpenCode runtime checks pass for tools, permissions, forms, cancellation and endpoint reuse. The real installed Claude Code fixture check passes with one native write. Dependency audit reports zero vulnerabilities. All 185 Git blobs in the public history were scanned: no recognized credential patterns, current local credentials or forbidden runtime artifacts were found.
+
+Completed continuation mappings and retry replies now persist outside the checkout. In-flight tasks are reserved before native submission and stay protected after interruption/restart. Desktop route and large-budget request regressions pass automated tests. Desktop Chat and Code UI checks remain open; earlier memory-only frontend histories require a new chat once.
+
+The evidence below is historical and refers to the version named in each entry. Earlier model-only limitations were superseded by the genuine session backend. GitHub publication is recorded by the remote repository and commit history; npm publication remains disabled.
+
+---
+
 # Verification record
 
 ## Current: 0.2.0-dev.1 ? Desktop/streaming compatibility
