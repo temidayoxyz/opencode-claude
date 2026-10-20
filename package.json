@@ -1,0 +1,20 @@
+{
+  "name": "opencode-claude",
+  "version": "0.1.0-dev.0",
+  "private": true,
+  "description": "Local OpenCode integration for Claude Code and Claude Desktop",
+  "type": "module",
+  "bin": { "opencode-claude": "dist/cli.js" },
+  "engines": { "node": ">=24 <27" },
+  "packageManager": "npm@11.19.1",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.0",
+    "typescript": "6.0.3"
+  }
+}
