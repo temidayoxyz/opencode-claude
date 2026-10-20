@@ -1,6 +1,19 @@
 # Changelog
 
-## 0.2.0-dev.1 ? 2026-10-20
+## 0.2.0-dev.2 - 2026-10-20
+
+- Accept Desktop frontend token budgets above 65,536 in native session mode. OpenCode controls actual generation limits.
+- Use Desktop-compatible route IDs with real OpenCode model display labels.
+- Save completed conversation mappings and replies privately across gateway restarts.
+- Reserve requests on disk before native execution; incomplete tasks stay blocked after restart.
+- Preserve the loopback endpoint so existing clients can reconnect.
+- Add restart, retry, corrupt-state and token-budget regression coverage.
+- Document GitHub installation, recovery and Desktop verification limits.
+
+Upgrade once: stop/reinstall the gateway, relaunch clients and start a new frontend conversation. Earlier memory-only mappings cannot be recovered; native sessions remain in OpenCode.
+
+
+## 0.2.0-dev.1 - 2026-10-20
 
 ### Fixed
 
