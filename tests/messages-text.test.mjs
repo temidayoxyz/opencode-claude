@@ -41,6 +41,16 @@ test('messages-text rejects unsupported content instead of dropping it', () => {
   }
 });
 
+test('messages-tools preserves error results and maps stop/effort to versioned options', () => {
+  const parsed = parseMessagesRequest(request({ stop_sequences: ['DONE'], output_config: { effort: 'high' }, messages: [
+    { role: 'assistant', content: [{ type: 'tool_use', id: 'a', name: 'Read', input: {} }] },
+    { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'a', is_error: true, content: 'Missing file' }] },
+  ] }));
+  assert.equal(parsed.messages[1].content[0].result.type, 'error');
+  assert.deepEqual(parsed.options.stop, ['DONE']);
+  assert.equal(parsed.options.reasoningEffort, 'high');
+});
+
 test('messages-text rejects invalid tokens, roles, tool results, and duplicate tools', () => {
   const invalid = [
     { max_tokens: -1 }, { max_tokens: 1.5 }, { stream: 'yes' },

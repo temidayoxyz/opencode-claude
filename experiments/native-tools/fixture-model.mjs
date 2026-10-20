@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { createServer } from 'node:http';
 
 // Original local fixture, not a proxy to an external model service.
-export async function createFixture() {
+export async function createFixture(options = {}) {
   const token = randomBytes(32).toString('base64url');
   const calls = new Map();
   const captures = new Map();
@@ -86,23 +86,26 @@ export async function createFixture() {
         const content = typeof result?.content === 'string'
           ? result.content : JSON.stringify(result?.content);
         const consumed = result && /"value"\s*:\s*1/.test(content ?? '');
-        if (result && !consumed) throw new Error('Unexpected external tool result');
+        if (result && !consumed && !options.reply) throw new Error('Unexpected external tool result');
         const toolCalls = hasCounter && !result ? [{
           id: `call_fixture_${modelRequests}`, type: 'function',
           function: { name: 'external_counter', arguments: '{"delta":1}' },
         }] : undefined;
-        const message = toolCalls
+        const controller = new AbortController();
+        res.once('close', () => controller.abort());
+        const message = options.reply ? await options.reply(body, { signal: controller.signal }) : toolCalls
           ? { role: 'assistant', content: null, tool_calls: toolCalls }
           : { role: 'assistant', content: consumed ? 'EXTERNAL_COUNTER=1' : 'Fixture title' };
-        const finish = toolCalls ? 'tool_calls' : 'stop';
+        const actualCalls = message.tool_calls;
+        const finish = actualCalls ? 'tool_calls' : 'stop';
         const common = { id: `chatcmpl_fixture_${modelRequests}`, created: 1, model: 'probe' };
         const usage = { prompt_tokens: 10, completion_tokens: 5, total_tokens: 15 };
         if (!body.stream) return respond(res, 200, {
           ...common, object: 'chat.completion', choices: [{ index: 0, message, finish_reason: finish }], usage,
         });
         res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
-        const delta = toolCalls
-          ? { role: 'assistant', tool_calls: toolCalls.map((call, index) => ({ index, ...call })) }
+        const delta = actualCalls
+          ? { role: 'assistant', tool_calls: actualCalls.map((call, index) => ({ index, ...call })) }
           : message;
         for (const [part, reason] of [[delta, null], [{}, finish]]) {
           res.write(`data: ${JSON.stringify({ ...common, object: 'chat.completion.chunk',

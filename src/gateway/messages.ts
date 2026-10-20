@@ -18,7 +18,7 @@ export interface ParsedMessages {
   system: { type: 'text'; text: string }[];
   messages: ModelMessage[];
   tools: ModelTool[];
-  options: Record<string, number | string[]>;
+  options: Record<string, number | string | string[]>;
 }
 
 function object(value: unknown, label: string): JsonObject {
@@ -54,8 +54,9 @@ function texts(value: unknown, label: string): { type: 'text'; text: string }[] 
 export function parseMessagesRequest(value: unknown): ParsedMessages {
   const request = object(value, 'Request');
   const supported = new Set(['model', 'messages', 'system', 'max_tokens', 'stream', 'tools',
-    'tool_choice', 'temperature', 'top_p', 'stop_sequences', 'metadata', 'thinking']);
-  if (Object.keys(request).some((key) => !supported.has(key))) throw new RequestError('Unsupported request field');
+    'tool_choice', 'temperature', 'top_p', 'stop_sequences', 'metadata', 'thinking', 'output_config']);
+  const unsupported = Object.keys(request).find((key) => !supported.has(key));
+  if (unsupported) throw new RequestError(`Unsupported request field: ${JSON.stringify(unsupported).slice(0, 80)}`);
   const model = string(request.model, 'Model');
   if (!model || model.length > 256) throw new RequestError('Invalid model identifier');
   if (!Number.isInteger(request.max_tokens) || Number(request.max_tokens) < 1 || Number(request.max_tokens) > 65536) {
@@ -72,6 +73,14 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
     }
   }
   const options: ParsedMessages['options'] = { maxTokens: Number(request.max_tokens) };
+  if (request.output_config !== undefined) {
+    const output = object(request.output_config, 'output_config');
+    if (Object.keys(output).some((key) => key !== 'effort')) throw new RequestError('Unsupported output_config; structured output is not implemented');
+    if (output.effort !== undefined) {
+      if (!['low', 'medium', 'high', 'xhigh', 'max'].includes(String(output.effort))) throw new RequestError('Unsupported effort');
+      options.reasoningEffort = String(output.effort);
+    }
+  }
   for (const [field, target] of [['temperature', 'temperature'], ['top_p', 'topP']] as const) {
     if (request[field] === undefined) continue;
     const amount = request[field];
@@ -81,7 +90,7 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
     options[target] = amount;
   }
   if (request.stop_sequences !== undefined) {
-    options.stopSequences = list(request.stop_sequences, 'stop_sequences', 16)
+    options.stop = list(request.stop_sequences, 'stop_sequences', 16)
       .map((item) => string(item, 'stop sequence'));
   }
   const toolNames = new Set<string>();

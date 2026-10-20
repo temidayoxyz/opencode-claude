@@ -1,6 +1,6 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, writeFile, rm, lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseMessagesRequest } from '../gateway/messages.js';
@@ -60,6 +60,7 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
   const token = randomBytes(32).toString('base64url');
   const active = new Map<string, ActiveRequest>();
   let closing = false;
+  let pending = 0;
   const broker = createServer(async (request, response) => {
     if (request.headers.origin) return json(response, 403, { error: 'browser_origin_rejected' });
     if (!authorized(request.headers.authorization, `Bearer ${token}`)) return json(response, 401, { error: 'unauthorized' });
@@ -91,14 +92,26 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
     broker.listen(0, '127.0.0.1', resolve);
   });
   let runtime: RunningRuntime | undefined;
+  let ownedRoot: string | undefined;
+  let ownership: { dev: number; ino: number; parent: string } | undefined;
+  let refreshing: Promise<void> | undefined;
   async function close(): Promise<void> {
     closing = true;
     for (const current of active.values()) current.controller.abort();
+    await refreshing?.catch(() => {});
     await runtime?.stop();
     await new Promise<void>((resolve) => {
       broker.close(() => resolve());
       broker.closeAllConnections();
     });
+    if (ownedRoot && ownership) {
+      const info = await lstat(ownedRoot);
+      const resolved = await realpath(ownedRoot);
+      if (info.isSymbolicLink() || info.dev !== ownership.dev || info.ino !== ownership.ino
+        || path.dirname(resolved) !== ownership.parent || !path.basename(resolved).startsWith('adapter-')) throw new Error('Refusing cleanup outside the proven-owned adapter directory');
+      await rm(resolved, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+      ownedRoot = undefined;
+    }
   }
   try {
     const address = broker.address();
@@ -106,11 +119,14 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
     const endpoint = `http://127.0.0.1:${address.port}`;
     await mkdir(options.stateRoot, { recursive: true, mode: 0o700 });
     const root = await mkdtemp(path.join(options.stateRoot, 'adapter-'));
+    const info = await lstat(root);
+    ownership = { dev: info.dev, ino: info.ino, parent: await realpath(options.stateRoot) };
+    ownedRoot = root;
     const plugin = path.join(root, 'plugin');
     await mkdir(plugin, { mode: 0o700 });
     await writeFile(path.join(plugin, 'package.json'), '{"type":"module"}', { mode: 0o600 });
     await writeFile(path.join(plugin, 'server.js'), `export { default } from ${JSON.stringify(new URL('./plugin.js', import.meta.url).href)};\n`, { mode: 0o600 });
-    runtime = await launchRuntime({
+    const runtimeOptions = {
       stateRoot: root,
       ...(options.isolated === undefined ? {} : { isolated: options.isolated }),
       ...(options.nativeBinary === undefined ? {} : { nativeBinary: options.nativeBinary }),
@@ -118,21 +134,43 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
         ...(options.providers === undefined ? {} : { providers: options.providers }),
         plugins: [{ package: pathToFileURL(plugin).href, options: { endpoint, token } }],
       },
-    });
-    const engine = runtime;
+    };
+    runtime = await launchRuntime(runtimeOptions);
+    let engine = runtime;
+    let completed = 0;
     return {
-      models: () => engine.api('GET', '/api/model'), close,
+      models: async () => { await refreshing; return engine.api('GET', '/api/model'); }, close,
       async generate(source, target, consume, signal) {
         if (closing) throw new Error('The local adapter is closing');
-        if (active.size >= 8) throw new Error('The local adapter is busy');
+        // Location/plugin caches belong to the native engine. Bound their lifetime
+        // without changing any mapping or interrupting an active generation.
+        if (completed >= 32) {
+          if (!refreshing && (active.size || pending)) throw new Error('The local adapter is busy recycling');
+          refreshing ??= (async () => {
+            await engine.stop();
+            runtime = await launchRuntime(runtimeOptions);
+            engine = runtime;
+            completed = 0;
+          })();
+          try { await refreshing; } finally { refreshing = undefined; }
+        }
+        if (closing) throw new Error('The local adapter is closing');
+        if (active.size + pending >= 8) throw new Error('The local adapter is busy');
         const parsed = parseMessagesRequest(source);
-        const directory = await mkdtemp(path.join(engine.workspace, 'request-'));
+        pending++;
+        let directory: string;
+        try { directory = await mkdtemp(path.join(engine.workspace, 'request-')); }
+        finally { pending--; }
+        if (closing) throw new Error('The local adapter is closing');
         const controller = new AbortController();
-        const combined = signal ? AbortSignal.any([controller.signal, signal]) : controller.signal;
-        combined.throwIfAborted();
+        const forwardAbort = () => controller.abort();
+        signal?.addEventListener('abort', forwardAbort, { once: true });
+        if (signal?.aborted) controller.abort();
+        const combined = controller.signal;
         const current: ActiveRequest = { source, consume, frames: 0, controller };
         active.set(key(directory), current);
         try {
+          combined.throwIfAborted();
           const created = object(await engine.api('POST', '/api/session', {
             title: 'Transient opencode-claude request', location: { directory }, model: target,
             permissions: [{ action: '*', resource: '*', effect: 'deny' },
@@ -146,8 +184,13 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
           }, combined);
           if (!current.frames) throw new Error('The model did not produce a supported HTTP response');
         } finally {
+          signal?.removeEventListener('abort', forwardAbort);
+          if (current.sessionID) {
+            if (combined.aborted) await engine.api('POST', `/api/session/${current.sessionID}/interrupt`, {}).catch(() => {});
+            await engine.api('DELETE', `/api/session/${current.sessionID}`).catch(() => {});
+          }
           active.delete(key(directory));
-          if (current.sessionID) await engine.api('DELETE', `/api/session/${current.sessionID}`).catch(() => {});
+          completed++;
         }
       },
     };

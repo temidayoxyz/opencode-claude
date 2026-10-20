@@ -63,7 +63,7 @@ export async function launchRuntime(options: RuntimeOptions): Promise<RunningRun
     snapshots: false, warming: false, permissions: [{ action: '*', resource: '*', effect: 'deny' }],
   }), { mode: 0o600 });
   const allowed = new Set(['SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATH', 'PATHEXT', 'TEMP', 'TMP',
-    'APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'PROGRAMDATA', 'HOMEDRIVE', 'HOMEPATH', 'LANG', 'LC_ALL',
+    'APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'PROGRAMDATA', 'HOMEDRIVE', 'HOMEPATH', 'HOME', 'LANG', 'LC_ALL',
     'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'XDG_CONFIG_HOME', 'XDG_STATE_HOME']);
   const environment = Object.fromEntries(Object.entries(process.env).filter(([key]) => allowed.has(key.toUpperCase())));
   Object.assign(environment, {

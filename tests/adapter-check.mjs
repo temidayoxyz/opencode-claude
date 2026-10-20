@@ -33,6 +33,13 @@ try {
   ] }, target, async (frame) => { second.push(frame); });
   assert.match(second.map((frame) => frame.choices?.[0]?.delta?.content ?? '').join(''), /EXTERNAL_COUNTER=1/);
   assert.equal((await fixture.status()).calls.length, 0, 'The native generation adapter must execute no tool');
+  // The 33rd generation crosses the native location-cache lifetime boundary.
+  for (let index = 0; index < 31; index++) {
+    const frames = [];
+    await adapter.generate({ model: base.model, max_tokens: 20, messages: [{ role: 'user', content: `Isolated ${index}` }] },
+      target, async frame => { frames.push(frame); });
+    assert.match(JSON.stringify(frames), /Fixture title/);
+  }
 } finally {
   await adapter?.close();
   await fixture.close();
