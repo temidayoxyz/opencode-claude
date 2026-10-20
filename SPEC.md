@@ -42,7 +42,7 @@ Bind each client to its host working directory and selected model. Defaults affe
 
 Inherit genuine OpenCode configuration and permissions. Relay native pending actions/resources with unpredictable session-bound codes. Explicit user approval invokes the supported permission API once; rejection denies it. Never send codes to the model or silently persist allow rules. Native forms require explicit answers/rejection.
 
-Preserve native continuity within a launch. Deduplicate exact requests to avoid repeating actions. Reject ambiguous, failed, compacted, branched or unknown histories clearly rather than silently restarting an action. Keep saved native conversations after gateway shutdown.
+Preserve native continuity within a client credential scope, including completed turns across gateway restarts. Persist retry reservations before native prompts, retain the loopback endpoint, and block recovery of incomplete tasks. Deduplicate exact requests to avoid repeating actions. Reject ambiguous, failed, compacted, branched or unknown histories clearly rather than silently restarting an action. Keep saved native conversations after gateway shutdown.
 
 ## Client setup
 
