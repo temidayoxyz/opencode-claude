@@ -2,14 +2,14 @@
 
 Use Claude as the interface to a genuine OpenCode agent session. OpenCode runs the selected model and executes its tools under your OpenCode configuration and permissions.
 
-**Experimental 0.2.0-dev.1.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
+**Experimental 0.2.0-dev.2.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
 
 ## Install from GitHub
 
-Requires Node 24 LTS, OpenCode 2.0.32 and your chosen Claude client. Connect providers in OpenCode first. After the repository is published, replace `YOUR-ACCOUNT`:
+Requires Node 24 LTS, OpenCode 2.0.32 and your chosen Claude client. Connect providers in OpenCode first:
 
 ```sh
-git clone https://github.com/YOUR-ACCOUNT/opencode-claude.git
+git clone https://github.com/temidayoxyz/opencode-claude.git
 cd opencode-claude
 npm ci --ignore-scripts
 npm run build
@@ -62,7 +62,7 @@ Progress appears as text such as `[OpenCode tool: write]`. These are OpenCode ac
 - Windows Desktop 2.42304.2.0: dedicated profile, backup and restore are implemented and tested as file operations. Chat and Code UI checks remain pending.
 - Text and Messages streaming are supported. Images, documents, frontend thinking blocks, server tools and structured output are outside the current subset. Desktop thinking preferences are accepted; OpenCode controls actual reasoning.
 
-Start a new Claude conversation after restarting the gateway, relaunching a client, editing an older branch or compacting its history. Native conversations remain saved in OpenCode. Unknown histories are rejected. See [compatibility](docs/compatibility.md).
+Completed conversations survive gateway restarts in the same running client, with the same credential and unchanged history. Start a new conversation after relaunching a client, editing an older branch or compacting its history. Conversations created before 0.2.0-dev.2 need a new frontend conversation once. Native conversations remain saved in OpenCode. Unknown histories are rejected. See [compatibility](docs/compatibility.md).
 
 ## How it works
 
@@ -85,7 +85,7 @@ opencode-claude doctor
 opencode-claude stop
 ```
 
-`doctor`, `models` and `setup` do not make hosted inference requests. `smoke` explicitly makes a text request. New client configurations use the actual provider/model ID and model name. Earlier Claude-shaped aliases remain accepted for compatibility and do not identify the underlying model. Provider restrictions and subscription entitlements are unchanged.
+`doctor`, `models` and `setup` do not make hosted inference requests. `smoke` explicitly makes a text request. Claude Code uses the actual provider/model ID. Desktop requires a Claude-shaped route ID; its display label names the actual model. That compatibility route and the `sonnet` family setting describe Desktop configuration, not model identity, benchmark quality or subscription tier. Provider restrictions and subscription entitlements are unchanged.
 
 ## Development
 
@@ -100,4 +100,4 @@ npm run test:claude
 
 Runtime checks use local fixtures and pinned OpenCode; the last also needs Claude Code. Older model-only experiments remain under `test:legacy` for comparison and are not used by normal commands.
 
-See the [specification](SPEC.md), [current evidence](docs/compatibility.md) and [changelog](CHANGELOG.md). OpenChamber and OpenWork informed this approach; their code is not bundled. Independent, MIT licensed. No public GitHub repository or npm package has been published by this local build.
+See the [specification](SPEC.md), [current evidence](docs/compatibility.md) and [changelog](CHANGELOG.md). OpenChamber and OpenWork informed this approach; their code is not bundled. Independent, MIT licensed. Distributed through this GitHub repository. No npm registry package is published.
