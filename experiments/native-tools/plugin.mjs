@@ -12,6 +12,14 @@ export default {
       authorization: `Bearer ${context.options.token}`,
       'content-type': 'application/json',
     };
+    await context.session.hook('generate', (event) => {
+      event.system = [{ type: 'text', text: 'Fixture system supplied by the external caller.' }];
+      event.messages = [
+        { role: 'user', content: [{ type: 'text', text: 'Fixture previous turn' }] },
+        { role: 'assistant', content: [{ type: 'text', text: 'Fixture previous reply' }] },
+        { role: 'user', content: [{ type: 'text', text: 'FIXTURE_CONTEXT_MARKER' }] },
+      ];
+    });
     await context.session.hook('http.response', async (event) => {
       if (event.kind !== 'generate' || !event.response.ok) return;
       const text = await event.response.clone().text();

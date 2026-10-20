@@ -79,6 +79,8 @@ try {
   });
   const captured = await fixture.captured(generateID);
   assert.equal(captured?.choices?.[0]?.message?.tool_calls?.[0]?.function?.name, 'external_counter');
+  assert.equal((await fixture.status()).customContextReceived, true,
+    'The model must receive the complete conversation supplied through the supported generation hook');
   assert.equal((await fixture.status()).calls.filter((item) => item.sessionID === generateID).length, 0,
     'Transient generation must return the tool call without executing even the relay');
 
@@ -87,6 +89,7 @@ try {
     model: 'deterministic loopback fixture', externalExecutionCount: externalCounter,
     resultConsumed: true, cancellationForwarded: true, duplicateResultRejected: true,
     transientToolResponseCaptured: true, transientToolExecutions: 0,
+    customConversationPreserved: true,
     claudeClientTested: false, liveFreeModelTested: false,
   }, null, 2));
 } catch (error) {

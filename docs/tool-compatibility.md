@@ -14,7 +14,7 @@ Date: 2026-10-20.
 
 1. **External execution through a session:** the fixture model sends an actual `external_counter` tool call through OpenCode. The plugin relays the call and waits. The external test harness increments its own counter exactly once and returns `{ "value": 1 }`. OpenCode consumes that tool result, and the fixture returns `EXTERNAL_COUNTER=1`. A duplicate result is rejected with HTTP 409.
 2. **Cancellation:** a second session reaches a pending tool call. OpenCode's interrupt operation aborts the Promise tool's signal, closes its broker request, and performs no external action.
-3. **Transient model response without tool execution:** `session.generate` invokes the model with the registered tool schema. The official `session.http.response` hook observes a clone of the provider response and captures its actual tool call. Neither the registered relay nor an external action is executed for that generation.
+3. **Transient model response without tool execution:** `session.generate` invokes the model with the registered tool schema. The official generation hook supplies a multi-turn conversation, which the fixture confirms it receives. The official `session.http.response` hook observes a clone of the provider response and captures its actual tool call. Neither the registered relay nor an external action is executed for that generation.
 4. **Cleanup:** the harness closes its fixture connections and stops only the child runtime it created. Its stop operation fails if that child remains alive.
 
 The transient-generation path is particularly useful for a Messages adapter: Claude can receive the actual model tool call and return its result in a later request, while OpenCode performs no tool action. The fixture showed that the provider response is streamed even though the public generation API ultimately returns only text. The experiment aggregates that stream for its assertion; live forwarding to Claude is not yet implemented.
@@ -44,6 +44,7 @@ Expected final evidence includes:
   "duplicateResultRejected": true,
   "transientToolResponseCaptured": true,
   "transientToolExecutions": 0,
+  "customConversationPreserved": true,
   "claudeClientTested": false,
   "liveFreeModelTested": false
 }

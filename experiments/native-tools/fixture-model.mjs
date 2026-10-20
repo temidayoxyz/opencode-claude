@@ -9,6 +9,7 @@ export async function createFixture() {
   let ready = false;
   let modelRequests = 0;
   let lastModelStream = false;
+  let customContextReceived = false;
   const respond = (res, status, value) => {
     res.writeHead(status, { 'content-type': 'application/json' });
     res.end(JSON.stringify(value));
@@ -78,6 +79,8 @@ export async function createFixture() {
         const body = await json(req);
         modelRequests++;
         lastModelStream = Boolean(body.stream);
+        customContextReceived = JSON.stringify(body.messages).includes('FIXTURE_CONTEXT_MARKER')
+          && body.messages.some((message) => message.role === 'assistant' && message.content === 'Fixture previous reply');
         const hasCounter = body.tools?.some((tool) => tool.function?.name === 'external_counter');
         const result = body.messages?.findLast((message) => message.role === 'tool');
         const content = typeof result?.content === 'string'
@@ -120,7 +123,8 @@ export async function createFixture() {
   });
   const url = `http://127.0.0.1:${server.address().port}`;
   function snapshot() {
-    return { ready, modelRequests, lastModelStream, calls: [...calls.values()].map(({ res, ...call }) => ({ ...call })) };
+    return { ready, modelRequests, lastModelStream, customContextReceived,
+      calls: [...calls.values()].map(({ res, ...call }) => ({ ...call })) };
   }
   async function sendResult(key, result) {
     return fetch(`${url}/bridge/result/${encodeURIComponent(key)}`, {
