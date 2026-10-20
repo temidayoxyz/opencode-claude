@@ -24,7 +24,7 @@ const fixture = await createFixture({ reply(body) {
       header: 'Local fixture', question: 'Choose Yes.', options: [{ label: 'Yes', description: 'Continue the fixture.' }, { label: 'No', description: 'Stop.' }],
     }] }) },
   }] };
-  if (!JSON.stringify(prompt).includes('WRITE_PROOF')) return { role: 'assistant', content: 'READY_SECOND_TURN' };
+  if (!JSON.stringify(prompt).includes('WRITE_PROOF')) return { role: 'assistant', reasoning_content: 'PRIVATE_SYNTHETIC_REASONING', content: 'READY_SECOND_TURN' };
   writes++;
   return { role: 'assistant', content: null, tool_calls: [{ id: 'native_write_proof', type: 'function', function: {
     name: 'write', arguments: JSON.stringify({ path: directory + '/proof.txt', content: 'ONE_NATIVE_WRITE' }),
@@ -45,7 +45,7 @@ try {
   assert.equal(registration.status, 200);
   const { token } = await registration.json();
   const send = (messages, stream = false) => fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': token },
-    signal: AbortSignal.timeout(30000), body: JSON.stringify({ model: 'alias', max_tokens: 128, stream, system: 'PRIVATE_FRONTEND_SYSTEM', messages }) });
+    signal: AbortSignal.timeout(30000), body: JSON.stringify({ model: 'alias', max_tokens: 128, stream, thinking: { type: 'adaptive' }, system: 'PRIVATE_FRONTEND_SYSTEM', messages }) });
   const messages = [{ role: 'user', content: 'WRITE_PROOF' }];
   let response = await send(messages);
   let value = await response.json();
@@ -75,7 +75,8 @@ try {
   const streaming = await send([{ role: 'user', content: 'Plain streamed reply.' }], true);
   const sse = await streaming.text();
   assert.match(sse, /event: message_start/);
-  assert.match(sse, /READY_SECOND_TURN/);
+  assert.equal((sse.match(/READY_SECOND_TURN/g) ?? []).length, 1);
+  assert.doesNotMatch(sse, /PRIVATE_SYNTHETIC_REASONING/);
   assert.match(sse, /event: message_stop/);
   assert.doesNotMatch(sse, /tool_use/);
   const questions = [{ role: 'user', content: 'QUESTION_PROOF' }];

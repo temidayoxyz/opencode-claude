@@ -1,5 +1,17 @@
 # Verification record
 
+## Current: 0.2.0-dev.1 ? Desktop/streaming compatibility
+
+- The reported conversation was confirmed through the official OpenCode API as DeepSeek V4.1 Flash Free. Its native response contained the reported sentence once, with a separate reasoning block. The gateway's text-ordinal/context-index mismatch caused the duplicate rendering.
+- The Sonnet alias was present in frontend-injected user context. New launches and profiles use the real provider/model ID and custom model name; earlier aliases remain accepted.
+- Desktop thinking preferences are accepted in native-session mode. Custom-model frontend system/developer roles and tool advertisements no longer block a native session; OpenCode retains its own instructions and tools.
+- All **36 unit/contract tests pass**, including new Desktop preferences, stream replay/reasoning slots, initial-probe retry, provider status and conflict semantics.
+- Real OpenCode fixture passes adaptive-thinking requests, streamed text once with reasoning hidden, native write/permissions/forms and multiple turns.
+- Real OpenCode cancellation proves an initial text-only check may retry, while an interrupted task that has written a file cannot rerun that write. An independent conversation and the service remain intact.
+- Actual Claude Code launcher passes with canonical IDs, conflicting saved routing settings, frontend tools disabled, and no old Claude alias in the synthetic user context. Native OpenCode performs one write and returns READY.
+- Native Desktop UI automation remains unavailable. The actual screenshot exposed gaps that fixture-only evidence did not establish; Desktop UI chat/Code remain separately tracked.
+
+
 ## Current: 0.2.0-dev.0, genuine sessions (2026-10-20)
 
 - The user's direction explicitly supersedes the earlier tool-execution design: OpenCode runs the agent/tools, Claude provides the interface. Default commands now use official SDK 2.0.32 attached to the normal service, with no system/tool/permission rewrites.

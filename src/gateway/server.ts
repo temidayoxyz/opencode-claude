@@ -60,6 +60,13 @@ export function providerFailure(cause: unknown): string {
 export async function createGateway(options: GatewayOptions) {
   if (!options.sessions && !options.adapter) throw new Error('No OpenCode backend configured');
   const clients = options.clients ?? await clientRegistry();
+  const names = new Map<string, string>();
+  if (Array.isArray(options.models)) for (const candidate of options.models as unknown[]) {
+    const model = candidate as { key?: unknown; alias?: unknown; name?: unknown } | null;
+    if (typeof model?.name !== 'string') continue;
+    if (typeof model.key === 'string') names.set(model.key, model.name);
+    if (typeof model.alias === 'string') names.set(model.alias, model.name);
+  }
   const instance = options.instance ?? randomBytes(16).toString('hex');
   const controllers = new Set<AbortController>();
   const server = createServer(async (request, response) => {
@@ -87,7 +94,7 @@ export async function createGateway(options: GatewayOptions) {
     }
     if (request.method === 'GET' && url.pathname === '/v1/models') return json(response, 200, {
       data: Object.keys(options.mappings).filter(id => !context || `${options.mappings[id]!.providerID}/${options.mappings[id]!.id}` === context.model)
-        .map((id) => ({ id, type: 'model', display_name: id, created_at: '2026-10-20T00:00:00Z' })), has_more: false,
+        .map((id) => ({ id, type: 'model', display_name: names.get(id) ?? id, created_at: '2026-10-20T00:00:00Z' })), has_more: false,
     });
     if (request.method !== 'POST' || url.pathname !== '/v1/messages') return error(response, 404, 'Unsupported endpoint');
     const controller = new AbortController();
@@ -97,7 +104,7 @@ export async function createGateway(options: GatewayOptions) {
     response.once('close', () => { if (!response.writableEnded) controller.abort(); });
     try {
       const source = await body(request);
-      const parsed = parseMessagesRequest(source);
+      const parsed = parseMessagesRequest(source, options.sessions ? 'session' : 'model');
       const target = Object.hasOwn(options.mappings, parsed.model) ? options.mappings[parsed.model] : undefined;
       if (!target) throw new RequestError('Unknown model mapping; select a model with opencode-claude');
       const write = async (type: string, data: unknown) => {
@@ -132,7 +139,7 @@ export async function createGateway(options: GatewayOptions) {
       request.resume();
       if (!response.destroyed) {
         const message = cause instanceof RequestError ? cause.message : providerFailure(cause);
-        const status = cause instanceof RequestError ? 400 : cause instanceof ProviderError && [403, 429].includes(cause.status) ? cause.status : 502;
+        const status = cause instanceof RequestError ? cause.status : cause instanceof ProviderError && [403, 429].includes(cause.status) ? cause.status : 502;
         if (response.headersSent) response.end(`event: error\ndata: ${JSON.stringify({ type: 'error', error: { type: errorType(status), message } })}\n\n`);
         else error(response, status, message);
       }

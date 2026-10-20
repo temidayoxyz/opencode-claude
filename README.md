@@ -2,7 +2,7 @@
 
 Use Claude as the interface to a genuine OpenCode agent session. OpenCode runs the selected model and executes its tools under your OpenCode configuration and permissions.
 
-**Experimental 0.2.0-dev.0.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
+**Experimental 0.2.0-dev.1.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
 
 ## Install from GitHub
 
@@ -60,7 +60,7 @@ Progress appears as text such as `[OpenCode tool: write]`. These are OpenCode ac
 - Real Claude Code with free DeepSeek: text and a native file task passed.
 - Local native OpenCode tests: permission relay, one file write, tool-result consumption, multiple turns and retry replay passed.
 - Windows Desktop 2.42304.2.0: dedicated profile, backup and restore are implemented and tested as file operations. Chat and Code UI checks remain pending.
-- Text and Messages streaming are supported. Images, documents, frontend thinking blocks, server tools and structured output are outside the current subset. Disable extended thinking in Desktop.
+- Text and Messages streaming are supported. Images, documents, frontend thinking blocks, server tools and structured output are outside the current subset. Desktop thinking preferences are accepted; OpenCode controls actual reasoning.
 
 Start a new Claude conversation after restarting the gateway, relaunching a client, editing an older branch or compacting its history. Native conversations remain saved in OpenCode. Unknown histories are rejected. See [compatibility](docs/compatibility.md).
 
@@ -85,7 +85,7 @@ opencode-claude doctor
 opencode-claude stop
 ```
 
-`doctor`, `models` and `setup` do not make hosted inference requests. `smoke` explicitly makes a text request. Claude-shaped aliases are routing identifiers, not Sonnet/Opus quality claims. Provider restrictions and subscription entitlements are unchanged.
+`doctor`, `models` and `setup` do not make hosted inference requests. `smoke` explicitly makes a text request. New client configurations use the actual provider/model ID and model name. Earlier Claude-shaped aliases remain accepted for compatibility and do not identify the underlying model. Provider restrictions and subscription entitlements are unchanged.
 
 ## Development
 

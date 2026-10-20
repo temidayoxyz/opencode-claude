@@ -1,5 +1,6 @@
 export class RequestError extends Error {
-  readonly status = 400;
+  readonly status: number;
+  constructor(message: string, status = 400) { super(message); this.status = status; }
 }
 
 type JsonObject = Record<string, unknown>;
@@ -52,7 +53,7 @@ function texts(value: unknown, label: string): { type: 'text'; text: string }[] 
 
 // OpenCode 2.0.32's documented model message representation:
 // https://github.com/anomalyco/opencode/blob/v2.0.32/packages/ai/src/schema/messages.ts
-export function parseMessagesRequest(value: unknown): ParsedMessages {
+export function parseMessagesRequest(value: unknown, mode: 'model' | 'session' = 'model'): ParsedMessages {
   const request = object(value, 'Request');
   const supported = new Set(['model', 'messages', 'system', 'max_tokens', 'stream', 'tools',
     'tool_choice', 'temperature', 'top_p', 'stop_sequences', 'metadata', 'thinking', 'output_config']);
@@ -64,8 +65,13 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
     throw new RequestError('max_tokens must be an integer from 1 to 65536');
   }
   if (request.stream !== undefined && typeof request.stream !== 'boolean') throw new RequestError('stream must be a boolean');
-  if (request.thinking !== undefined && object(request.thinking, 'thinking').type !== 'disabled') {
-    throw new RequestError('Unsupported thinking configuration for this adapter');
+  if (request.thinking !== undefined) {
+    const thinking = object(request.thinking, 'thinking');
+    if (mode === 'model' ? thinking.type !== 'disabled' : !['disabled', 'enabled', 'adaptive', 'between_tools'].includes(String(thinking.type))) {
+      throw new RequestError('Unsupported thinking configuration for this adapter');
+    }
+    // Native sessions keep OpenCode's own reasoning configuration. Frontend
+    // preferences are accepted without rewriting the native provider request.
   }
   if (request.tool_choice !== undefined) {
     const choice = object(request.tool_choice, 'tool_choice');
@@ -95,7 +101,8 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
       .map((item) => string(item, 'stop sequence'));
   }
   const toolNames = new Set<string>();
-  const tools = list(request.tools ?? [], 'tools', 256).map((item) => {
+  const advertised = list(request.tools ?? [], 'tools', 256);
+  const tools = mode === 'session' ? [] : advertised.map((item) => {
     const tool = object(item, 'Tool');
     if (tool.type !== undefined && tool.type !== 'custom') throw new RequestError('Unsupported server-side tool');
     if (tool.defer_loading === true) throw new RequestError('Unsupported deferred tool loading');
@@ -110,7 +117,13 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
   const messages: ModelMessage[] = [];
   for (const item of list(request.messages, 'messages', 2000)) {
     const message = object(item, 'Message');
-    if (message.role !== 'user' && message.role !== 'assistant') throw new RequestError('Unsupported message role');
+    // Custom-model clients may put frontend instructions in message roles.
+    // OpenCode owns the agent instructions in session mode.
+    if (mode === 'session' && (message.role === 'system' || message.role === 'developer')) continue;
+    if (message.role !== 'user' && message.role !== 'assistant') {
+      const known = ['system', 'developer', 'tool', 'function'].includes(String(message.role)) ? ': ' + String(message.role) : '';
+      throw new RequestError('Unsupported message role' + known);
+    }
     const role = message.role;
     const blocks = typeof message.content === 'string'
       ? [{ type: 'text', text: message.content }] : list(message.content, 'Message content', 4096);

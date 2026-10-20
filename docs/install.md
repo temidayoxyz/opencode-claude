@@ -21,7 +21,7 @@ Keep the checkout in place: npm may link global commands to a local directory. A
 
 ```sh
 npm pack --ignore-scripts
-npm install --global ./opencode-claude-0.2.0-dev.0.tgz --ignore-scripts
+npm install --global ./opencode-claude-0.2.0-dev.1.tgz --ignore-scripts
 ```
 
 A maintainer can attach that file to a GitHub release. No registry account or publication is needed. Each user supplies their own OpenCode installation and provider access; no keys belong in the repository or release.
@@ -54,7 +54,7 @@ Terminal I/O is preserved. **OpenCode executes tools under its own permissions; 
 
 ## Desktop
 
-`run desktop` writes a dedicated **OpenCode** inference profile on the verified Windows Desktop version, selects it, and opens Desktop. It never terminates an open app. Save work and quit/reopen Desktop if needed. Disable extended thinking. Run from the host directory OpenCode should use; Desktop VM paths are not automatically mapped. OpenCode executes the tools. Both tabs need separate UI verification as described in [compatibility](compatibility.md).
+`run desktop` writes a dedicated **OpenCode** inference profile on the verified Windows Desktop version, selects it, and opens Desktop. It never terminates an open app. Save work and quit/reopen Desktop if needed. OpenCode controls actual reasoning. Run from the host directory OpenCode should use; Desktop VM paths are not automatically mapped. OpenCode executes the tools. Both tabs need separate UI verification as described in [compatibility](compatibility.md).
 
 Existing provider profile files are preserved. The metadata backup path is printed. Restore the previous selection with:
 

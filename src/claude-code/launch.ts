@@ -22,8 +22,15 @@ function gatewayOverrides(connection: Connection, model: CatalogModel): Record<s
     ANTHROPIC_BASE_URL: connection.url, ANTHROPIC_AUTH_TOKEN: connection.token, ANTHROPIC_API_KEY: '',
     CLAUDE_CODE_USE_BEDROCK: '', CLAUDE_CODE_USE_VERTEX: '', CLAUDE_CODE_USE_FOUNDRY: '',
     CLAUDE_CODE_OAUTH_TOKEN: '', ANTHROPIC_CUSTOM_HEADERS: '', ANTHROPIC_BETAS: '', ANTHROPIC_FALLBACK_MODEL: '',
-    ANTHROPIC_MODEL: model.alias, ANTHROPIC_DEFAULT_SONNET_MODEL: model.alias, ANTHROPIC_DEFAULT_OPUS_MODEL: model.alias,
-    ANTHROPIC_DEFAULT_HAIKU_MODEL: model.alias, ANTHROPIC_SMALL_FAST_MODEL: model.alias, CLAUDE_CODE_SUBAGENT_MODEL: model.alias,
+    ANTHROPIC_CUSTOM_MODEL_OPTION: model.key, ANTHROPIC_CUSTOM_MODEL_OPTION_NAME: model.name + ' (OpenCode)',
+    ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION: 'OpenCode session: ' + model.key,
+    CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY: '0',
+    ANTHROPIC_MODEL: model.key, ANTHROPIC_DEFAULT_SONNET_MODEL: model.key, ANTHROPIC_DEFAULT_OPUS_MODEL: model.key,
+    ANTHROPIC_DEFAULT_HAIKU_MODEL: model.key, ANTHROPIC_SMALL_FAST_MODEL: model.key, CLAUDE_CODE_SUBAGENT_MODEL: model.key,
+    ANTHROPIC_DEFAULT_SONNET_MODEL_NAME: model.name + ' (OpenCode)',
+    ANTHROPIC_DEFAULT_OPUS_MODEL_NAME: model.name + ' (OpenCode)',
+    ANTHROPIC_DEFAULT_HAIKU_MODEL_NAME: model.name + ' (OpenCode)',
+    ANTHROPIC_DEFAULT_FABLE_MODEL: model.key, ANTHROPIC_DEFAULT_FABLE_MODEL_NAME: model.name + ' (OpenCode)',
     CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1', DISABLE_TELEMETRY: '1', DISABLE_ERROR_REPORTING: '1',
     CLAUDE_CODE_DISABLE_THINKING: '1', MAX_THINKING_TOKENS: '0', ENABLE_TOOL_SEARCH: 'false',
     CLAUDE_CODE_MAX_OUTPUT_TOKENS: String(Math.min(8192, model.output)),
@@ -47,7 +54,7 @@ export async function launchClaude(connection: Connection, model: CatalogModel, 
   await writeFile(filename, JSON.stringify({ env: gatewayOverrides(connection, model) }), { mode: 0o600, flag: 'wx' });
   const interrupted = () => {};
   try {
-    const child = spawn(claudeBinary(), ['--model', model.alias, '--settings', filename, '--tools', '', ...args], {
+    const child = spawn(claudeBinary(), ['--model', model.key, '--settings', filename, '--tools', '', '--permission-mode', 'default', ...args], {
       env: launchEnvironment(connection, model), stdio: 'inherit', windowsHide: false,
     });
     // The terminal delivers Ctrl+C to both; report the child's exit code.

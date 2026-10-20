@@ -17,6 +17,8 @@ await mkdir(stateRoot, { recursive: true, mode: 0o700 });
 const workspace = await mkdtemp(path.join(stateRoot, 'claude-check-'));
 let resultsConsumed = 0;
 const fixture = await createFixture({ reply(body) {
+  assert.equal(body.messages.some(m => m.role === 'user' && JSON.stringify(m.content).includes('claude-sonnet-4-6-oc-')), false,
+    'Frontend identity context must use the real model identifier');
   const result = body.messages.findLast(m => m.role === 'tool');
   if (result) {
     assert.match(JSON.stringify(result.content), /file|success|written/i);
@@ -38,7 +40,7 @@ try {
   const token = randomBytes(32).toString('base64url');
   const alias = modelAlias('fixture/probe');
   const model = { key: 'fixture/probe', target: { providerID: 'fixture', id: 'probe' }, alias, name: 'Fixture', supported: true, free: true, context: 200000, output: 8192 };
-  gateway = await createGateway({ sessions: adapter, token, mappings: { [alias]: model.target }, models: [model] });
+  gateway = await createGateway({ sessions: adapter, token, mappings: { [alias]: model.target, [model.key]: model.target }, models: [model] });
   await writeFile(path.join(workspace, 'gateway.key'), token, { mode: 0o600 });
   await writeFile(path.join(workspace, 'service.json'), JSON.stringify({ url: gateway.url, instance: gateway.instance, pid: process.pid }), { mode: 0o600 });
   const claudeConfig = path.join(workspace, 'claude-user');

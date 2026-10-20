@@ -12,7 +12,7 @@ export interface SessionSink { text(delta: string): Promise<void>; complete(usag
 interface Pending { code: string; permission?: PermissionRequest; form?: FormInfo }
 interface Conversation { sessionID: string; busy: boolean; pending?: Pending; seen: Set<string>; tip?: string }
 interface Reply { text: string; usage: Usage }
-interface Cached { reply?: Reply; failure?: true; busy?: true }
+interface Cached { reply?: Reply; failure?: true; busy?: true; providerError?: ProviderError }
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const zeroUsage = () => ({ input_tokens: 0, output_tokens: 0 });
 
@@ -59,14 +59,15 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       const namespace = [context.id, source.userId ?? '', context.model];
       const key = digest([namespace, history]);
       const cached = requests.get(key);
-      if (cached?.busy) throw new RequestError('This request is already running; wait for it to finish');
-      if (cached?.failure) throw new RequestError('The previous attempt failed or was interrupted. Actions may have run; inspect the OpenCode session before sending a new prompt');
+      if (cached?.busy) throw new RequestError('This request is already running; wait for it to finish', 409);
+      if (cached?.providerError) throw cached.providerError;
+      if (cached?.failure) throw new RequestError('The previous attempt failed or was interrupted. Actions may have run; inspect the OpenCode session before sending a new prompt', 409);
       if (cached?.reply) { await sink.text(cached.reply.text); sink.complete(cached.reply.usage); return; }
       if (requests.size >= 2048) throw new RequestError('Session cache is full; finish current work and restart the gateway');
       if (cachedBytes > 56 * 1024 * 1024) throw new RequestError('Reply cache is full; finish current work and restart the gateway');
       let conversation = continuations.get(digest([namespace, history.slice(0, -1)]));
       if (!conversation && history.length > 1) throw new RequestError('Conversation history is unknown or the gateway restarted. Start a new conversation; the original session remains in OpenCode');
-      if (conversation?.busy) throw new RequestError('This OpenCode session is already running');
+      if (conversation?.busy) throw new RequestError('This OpenCode session is already running', 409);
       if (active >= 8) throw new RequestError('Eight OpenCode sessions are already active; wait for one to finish');
       if (!conversation && owned.size + active >= 256) throw new RequestError('Too many sessions; finish current work and restart the gateway');
       const cache: Cached = { busy: true };
@@ -77,7 +78,11 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
           const info = await client.session.create({ title: 'opencode-claude', model: target, location: { directory: context.directory } }, { signal });
           conversation = { sessionID: info.id, busy: false, seen: new Set() };
           owned.add(conversation);
-        } catch (cause) { active--; cache.failure = true; delete cache.busy; throw cause; }
+        } catch (cause) {
+          active--; cache.failure = true; delete cache.busy;
+          if (signal.aborted) requests.delete(key); // No prompt was submitted.
+          throw cause;
+        }
       }
       const session = conversation;
       session.busy = true;
@@ -86,7 +91,9 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       const usage = zeroUsage();
       let writes = Promise.resolve();
       let writeError: unknown;
+      let toolActivity = false;
       const streamed = new Map<string, string>();
+      const eventIds = new Set<string>();
       const progress = new Set<string>();
       const append = (delta: string) => {
         if (!delta) return;
@@ -95,7 +102,10 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         text += delta;
         writes = writes.then(() => sink.text(delta)).catch(cause => { writeError = cause; });
       };
-      const interrupted = () => { void client.session.interrupt({ sessionID: session.sessionID }, { signal: AbortSignal.timeout(5000) }).catch(() => {}); };
+      let interrupting: Promise<void> | undefined;
+      const interrupt = () => interrupting ??= client.session.interrupt({ sessionID: session.sessionID },
+        { signal: AbortSignal.timeout(5000) }).then(() => {});
+      const interrupted = () => { void interrupt().catch(() => {}); };
       signal.addEventListener('abort', interrupted, { once: true });
       try {
         signal.throwIfAborted();
@@ -103,15 +113,17 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         // Set a baseline before resuming a blocked tool. Its assistant message
         // can have been partially streamed in the preceding frontend turn.
         for (const message of await client.session.context({ sessionID: session.sessionID }, { signal })) {
-          if (message.type === 'assistant') for (let i = 0; i < message.content.length; i++) {
-            const part = message.content[i];
-            if (part?.type === 'text') streamed.set(`${message.id}:${i}`, part.text);
-          }
+          if (message.type === 'assistant') streamed.set(message.id,
+            message.content.filter(part => part.type === 'text').map(part => part.text).join(''));
         }
         listeners.set(session.sessionID, event => {
           try {
+            if (eventIds.has(event.id)) return;
+            if (eventIds.size >= 65536) throw new Error('Native session event limit exceeded');
+            eventIds.add(event.id);
+            if (/^session\.(tool|shell|compaction)\./.test(event.type)) toolActivity = true;
             if (event.type === 'session.text.delta') {
-              const k = `${event.data.assistantMessageID}:${event.data.ordinal}`;
+              const k = event.data.assistantMessageID;
               streamed.set(k, (streamed.get(k) ?? '') + event.data.delta);
               append(event.data.delta);
             } else if (event.type === 'session.tool.input.started' && !progress.has(event.data.id)) {
@@ -176,13 +188,14 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         for (const message of messages) {
           if (message.type !== 'assistant' || session.seen.has(message.id)) continue;
           if (message.error) throw new ProviderError(message.error.status ?? 502, accessReason(message.error));
-          for (let i = 0; i < message.content.length; i++) {
-            const part = message.content[i];
-            if (part?.type === 'text') {
-              const previous = streamed.get(`${message.id}:${i}`) ?? '';
-              if (part.text.startsWith(previous)) append(part.text.slice(previous.length));
-              else throw new Error('OpenCode text stream disagrees with completed context');
-            } else if (part?.type === 'tool' && !progress.has(part.id)) append(`\n[OpenCode tool: ${part.name}]\n`);
+          // Text ordinals count text parts, whereas context indexes also
+          // include reasoning and tools. Reconcile visible text per message.
+          const fullText = message.content.filter(part => part.type === 'text').map(part => part.text).join('');
+          const previous = streamed.get(message.id) ?? '';
+          if (!fullText.startsWith(previous)) throw new Error('OpenCode text stream disagrees with completed context');
+          append(fullText.slice(previous.length));
+          for (const part of message.content) {
+            if (part.type === 'tool' && !progress.has(part.id)) append(`\n[OpenCode tool: ${part.name}]\n`);
           }
           if (message.time?.completed) session.seen.add(message.id);
           if (message.tokens) {
@@ -214,10 +227,23 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       } catch (cause) {
         cache.failure = true;
         delete cache.busy;
-        // Finish the interrupt before accepting another prompt on this session.
-        // A malformed answer has not resumed the agent and leaves its native
-        // permission/form pending so the user can correct that answer.
-        if (!(cause instanceof RequestError)) await client.session.interrupt({ sessionID: session.sessionID }, { signal: AbortSignal.timeout(5000) }).catch(() => {});
+        if (cause instanceof ProviderError) cache.providerError = cause;
+        let stopped = false;
+        // Do not poison recurring Desktop checks when a client cancels an
+        // initial text request. Only retry after verified idle and no actions.
+        if (!(cause instanceof RequestError)) {
+          try { await interrupt(); stopped = true; } catch { /* Unknown completion stays protected. */ }
+        }
+        if (signal.aborted && !(cause instanceof ProviderError) && history.length === 1 && !session.pending && !toolActivity && stopped) {
+          try {
+            const verification = { signal: AbortSignal.timeout(5000) };
+            await client.session.wait({ sessionID: session.sessionID }, verification);
+            const completed = await client.session.context({ sessionID: session.sessionID }, verification);
+            const noActions = completed.every(message => message.type !== 'shell' && !message.type.startsWith('compaction')
+              && (message.type !== 'assistant' || message.content.every(part => part.type !== 'tool')));
+            if (noActions && !toolActivity) { requests.delete(key); owned.delete(session); }
+          } catch { /* Without proof, preserve protection against duplicate actions. */ }
+        }
         throw cause;
       } finally {
         listeners.delete(session.sessionID);

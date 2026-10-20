@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-Recorded 2026-10-20 for **0.2.0-dev.0**. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
+Recorded 2026-10-20 for **0.2.0-dev.1**. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
 
 | Capability | Evidence |
 | --- | --- |
@@ -25,7 +25,7 @@ Enabled, nondeprecated OpenCode models with agent tool support may use any provi
 
 Native text deltas become Messages events. Native tool names appear as progress text. Reasoning traces and tool outputs are not exposed as fabricated Claude tool calls. Completed context reconciles missed text. Usage comes from OpenCode's reported model-step counts, including cached input; local progress/permission text is not independently token-counted.
 
-OpenCode generation settings govern the agent. Frontend system prompts, tool definitions, temperature, stop sequences and max-token settings are not imposed on the native request. Images, documents, frontend thinking blocks, server tools, structured output, Claude-native tools and automatic Desktop VM path mapping are unsupported.
+OpenCode generation settings govern the agent. Frontend system prompts, tool definitions, temperature, stop sequences and max-token settings are not imposed on the native request. Frontend thinking preferences and tool advertisements are accepted as client metadata. OpenCode keeps its own reasoning and tool configuration. Images, documents, frontend thinking content blocks, Anthropic server-tool execution, structured output, Claude-native tools and automatic Desktop VM path mapping are unsupported.
 
 The workspace is bound to a scoped credential at launch. Run from the desired host project directory. Desktop Code may still initialize its own workspace; OpenCode operates in the bound host directory.
 
@@ -37,7 +37,7 @@ Configure permissions in OpenCode. Claude's flags cannot govern tools executed b
 
 ## History, retries and cancellation
 
-Canonical frontend histories identify continuations within a launch. Client/model scopes and frontend user IDs isolate conversations. Exact completed requests replay without duplicating actions. A failed or cancelled attempt may already have performed actions; a retry returns an inspection message.
+Canonical frontend histories identify continuations within a launch. Client/model scopes and frontend user IDs isolate conversations. Exact completed requests replay without duplicating actions. A failed or cancelled task that may have performed actions stays protected and returns a conflict/inspection message. An interrupted initial request can retry only after OpenCode is verified idle with no tool, shell or compaction activity. Provider denials retain their original status.
 
 Start a new frontend conversation after a gateway restart, relaunch, history compaction or editing an older branch. Unknown histories are rejected. Native conversations remain in OpenCode with title `opencode-claude`.
 

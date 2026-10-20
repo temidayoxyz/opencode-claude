@@ -1,6 +1,6 @@
 {
   "name": "opencode-claude",
-  "version": "0.2.0-dev.0",
+  "version": "0.2.0-dev.1",
   "private": true,
   "license": "MIT",
   "description": "Local OpenCode integration for Claude Code and Claude Desktop",

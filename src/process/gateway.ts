@@ -123,7 +123,7 @@ export async function serve(root: string): Promise<void> {
     const token = await localToken(root);
     adapter = createSessionBackend(await connectOpenCode());
     const models = catalog(await adapter.models());
-    const mappings = Object.fromEntries(models.filter(model => model.supported).map(model => [model.alias, model.target]));
+    const mappings = Object.fromEntries(models.filter(model => model.supported).flatMap(model => [[model.key, model.target], [model.alias, model.target]]));
     gateway = await createGateway({ sessions: adapter, clients: await clientRegistry(path.join(root, 'clients.json')), token, instance, mappings, models,
       shutdown: () => { void stop().then(() => process.exit(0), () => process.exit(1)); } });
     await atomicJSON(path.join(root, 'service.json'), { url: gateway.url, instance, pid: process.pid });
