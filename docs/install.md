@@ -2,10 +2,10 @@
 
 Use Node.js 24 LTS with npm, Git, and **OpenCode 2.0.32**. OpenCode is a separate prerequisite; install it from its official distribution and connect your providers in OpenCode. Install Claude Code and/or a Claude Desktop build that supports third-party inference.
 
-The source checkout is the supported GitHub installation route. Replace `YOUR-ACCOUNT` with the repository owner after publication:
+The source checkout is the supported GitHub installation route. Clone the public repository:
 
 ```sh
-git clone https://github.com/YOUR-ACCOUNT/opencode-claude.git
+git clone https://github.com/temidayoxyz/opencode-claude.git
 cd opencode-claude
 npm ci --ignore-scripts
 npm run build
@@ -21,7 +21,7 @@ Keep the checkout in place: npm may link global commands to a local directory. A
 
 ```sh
 npm pack --ignore-scripts
-npm install --global ./opencode-claude-0.2.0-dev.1.tgz --ignore-scripts
+npm install --global ./opencode-claude-0.2.0-dev.2.tgz --ignore-scripts
 ```
 
 A maintainer can attach that file to a GitHub release. No registry account or publication is needed. Each user supplies their own OpenCode installation and provider access; no keys belong in the repository or release.
@@ -50,7 +50,7 @@ Forward Claude arguments after `--`:
 opencode-claude run claude --model opencode/deepseek-v4.1-flash-free -- -p "Explain this repository"
 ```
 
-Terminal I/O is preserved. **OpenCode executes tools under its own permissions; Claude terminal tools are disabled.** Run from the desired host project directory. Routing uses a scoped bearer token and private session settings; saved user/project files remain unchanged. `--settings` and Claude tool, agent and permission flags are reserved. Managed policy still applies. Start a new conversation after relaunching, restarting the gateway or compacting history. Configure generation limits in OpenCode.
+Terminal I/O is preserved. **OpenCode executes tools under its own permissions; Claude terminal tools are disabled.** Run from the desired host project directory. Routing uses a scoped bearer token and private session settings; saved user/project files remain unchanged. `--settings` and Claude tool, agent and permission flags are reserved. Managed policy still applies. Completed turns can continue in the same running client after a gateway restart. Start a new conversation after relaunching the client or compacting history. Configure generation limits in OpenCode.
 
 ## Desktop
 
@@ -75,8 +75,18 @@ npm test
 npm install --global . --ignore-scripts
 ```
 
-After provider/model changes, use `stop` then `start` to refresh the catalog. Relaunch Desktop to refresh its address and credential. Start a new frontend conversation; native conversations remain in OpenCode. No login startup task is installed. The normal OpenCode service stays running when this gateway stops.
+After provider/model changes, use `stop` then `start` to refresh the catalog. Relaunch Desktop to refresh its address and credential. The first upgrade from a version older than 0.2.0-dev.2 requires a new frontend conversation; native conversations remain in OpenCode. No login startup task is installed. The normal OpenCode service stays running when this gateway stops.
 
 To uninstall, restore the Desktop profile first, stop the gateway, then run `npm uninstall --global opencode-claude`. State is retained in `%LOCALAPPDATA%\opencode-claude` on Windows or `$XDG_STATE_HOME/opencode-claude` (default `~/.local/state/opencode-claude`) elsewhere. `OPENCODE_CLAUDE_HOME` can override it. Do not commit this directory.
 
 Set `OPENCODE_CLAUDE_BIN` to OpenCode's **native executable**, and `CLAUDE_BIN` to Claude Code's executable, if discovery fails. Shell `.cmd` wrappers are not used as native executables on Windows. No administrator access is required when your Node/npm global prefix is user-writable.
+
+## Troubleshooting
+
+- **max_tokens / 65536:** update to 0.2.0-dev.2 or later. Session mode accepts larger positive integer frontend budgets; OpenCode still controls generation limits.
+- **Desktop removed a non-Anthropic model:** rerun `opencode-claude run desktop` after updating, then quit/reopen Desktop after saving work. The profile uses a compatibility route with the real model's display name.
+- **Unknown history:** start a new frontend chat after upgrading from older builds, relaunching, editing an earlier turn or compaction. Earlier native history remains in OpenCode.
+- **Interrupted session:** inspect its native OpenCode history before starting new work. The gateway deliberately blocks automatic action replay.
+- **Restart cannot bind the saved port:** quit the gateway and resolve the port conflict. Do not terminate an unrelated process blindly. To choose a new endpoint, move `endpoint.json` aside while the gateway is stopped, then relaunch clients.
+
+The private `sessions.json` journal contains reply text, native IDs, history hashes and pending permission details. Keep it private. It does not store frontend prompts or provider keys. Corrupt journals fail closed. Back up state before repair; deleting a journal loses retry protection and frontend continuation mappings. Cache limits persist across restarts. For a fresh isolated state directory, use `OPENCODE_CLAUDE_HOME` and start new frontend conversations; never replay an uncertain task without inspecting it in OpenCode first.
