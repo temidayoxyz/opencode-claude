@@ -7,6 +7,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { atomicJSON, localToken, readJSON } from '../config/store.js';
 import { catalog, type CatalogModel } from '../config/models.js';
 import { createSessionBackend } from '../opencode/sessions.js';
+import { openSessionJournal } from '../opencode/journal.js';
 import { connectOpenCode } from '../opencode/connection.js';
 import { clientRegistry, type ClientContext } from '../gateway/clients.js';
 import { createGateway } from '../gateway/server.js';
@@ -121,7 +122,7 @@ export async function serve(root: string): Promise<void> {
   };
   try {
     const token = await localToken(root);
-    adapter = createSessionBackend(await connectOpenCode());
+    adapter = createSessionBackend(await connectOpenCode(), { journal: await openSessionJournal(path.join(root, 'sessions.json')) });
     const models = catalog(await adapter.models());
     const mappings = Object.fromEntries(models.filter(model => model.supported).flatMap(model => [[model.key, model.target], [model.alias, model.target]]));
     gateway = await createGateway({ sessions: adapter, clients: await clientRegistry(path.join(root, 'clients.json')), token, instance, mappings, models,

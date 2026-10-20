@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
-import type { V2Event, PermissionRequest, FormInfo } from '@opencode/client';
+import type { V2Event } from '@opencode/client';
+import type { SessionJournal, Pending, Reply } from './journal.js';
 import type { NativeClient } from './connection.js';
 import type { ModelTarget } from './adapter.js';
 import { accessReason, ProviderError } from './access.js';
@@ -9,9 +10,7 @@ import type { ClientContext } from '../gateway/clients.js';
 
 interface Usage { input_tokens: number; output_tokens: number }
 export interface SessionSink { text(delta: string): Promise<void>; complete(usage: Usage): void }
-interface Pending { code: string; permission?: PermissionRequest; form?: FormInfo }
-interface Conversation { sessionID: string; busy: boolean; pending?: Pending; seen: Set<string>; tip?: string }
-interface Reply { text: string; usage: Usage }
+interface Conversation { sessionID: string; busy: boolean; pending?: Pending; seen: Set<string>; tip?: string; recovery?: boolean; inFlight?: Cached }
 interface Cached { reply?: Reply; failure?: true; busy?: true; providerError?: ProviderError }
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const zeroUsage = () => ({ input_tokens: 0, output_tokens: 0 });
@@ -25,7 +24,7 @@ export interface SessionBackend {
 // Genuine agent sessions: OpenCode owns its instructions, history, provider
 // protocol and tools. Claude receives text, never executable copies of tools
 // that OpenCode has already run.
-export function createSessionBackend(client: NativeClient, options: { events?: boolean } = {}): SessionBackend {
+export function createSessionBackend(client: NativeClient, options: { events?: boolean; journal?: SessionJournal } = {}): SessionBackend {
   const continuations = new Map<string, Conversation>();
   const requests = new Map<string, Cached>();
   const owned = new Set<Conversation>();
@@ -35,6 +34,26 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
   let cachedBytes = 0;
   let active = 0;
   let eventLoop: Promise<void> | undefined;
+  for (const saved of options.journal?.initial.conversations ?? []) {
+    const session: Conversation = { sessionID: saved.sessionID, busy: false, seen: new Set(saved.seen),
+      recovery: saved.blocked, ...(saved.tip ? { tip: saved.tip } : {}), ...(saved.pending ? { pending: saved.pending } : {}) };
+    owned.add(session);
+    if (session.tip) continuations.set(session.tip, session);
+  }
+  for (const { key, providerError, ...saved } of options.journal?.initial.requests ?? []) {
+    requests.set(key, { ...saved, ...(providerError ? { providerError: new ProviderError(providerError.status, providerError.reason) } : {}) });
+    cachedBytes += Buffer.byteLength(saved.reply?.text ?? '');
+  }
+  const persist = async () => {
+    if (!options.journal) return;
+    await options.journal.save({ version: 1,
+      conversations: [...owned].map(s => ({ sessionID: s.sessionID, seen: [...s.seen],
+        blocked: !!s.recovery || !!s.inFlight?.busy, ...(s.tip ? { tip: s.tip } : {}), ...(s.pending ? { pending: s.pending } : {}) })),
+      requests: [...requests].map(([key, c]) => ({ key, ...(c.reply ? { reply: c.reply } : {}),
+        ...(c.failure || c.busy ? { failure: true as const } : {}),
+        ...(c.providerError ? { providerError: { status: c.providerError.status, reason: c.providerError.reason } } : {}) })),
+    });
+  };
   if (options.events !== false) {
     eventLoop = (async () => {
       // SharedEvents reconnects; final context reconciliation also recovers
@@ -66,7 +85,8 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       if (requests.size >= 2048) throw new RequestError('Session cache is full; finish current work and restart the gateway');
       if (cachedBytes > 56 * 1024 * 1024) throw new RequestError('Reply cache is full; finish current work and restart the gateway');
       let conversation = continuations.get(digest([namespace, history.slice(0, -1)]));
-      if (!conversation && history.length > 1) throw new RequestError('Conversation history is unknown or the gateway restarted. Start a new conversation; the original session remains in OpenCode');
+      if (!conversation && history.length > 1) throw new RequestError('Conversation history is unknown. Start a new conversation; the original session remains in OpenCode. Histories from versions before 0.2.0-dev.2 cannot be restored', 409);
+      if (conversation?.recovery) throw new RequestError('The OpenCode session was interrupted. Inspect it in OpenCode before starting a new conversation; actions will not be replayed', 409);
       if (conversation?.busy) throw new RequestError('This OpenCode session is already running', 409);
       if (active >= 8) throw new RequestError('Eight OpenCode sessions are already active; wait for one to finish');
       if (!conversation && owned.size + active >= 256) throw new RequestError('Too many sessions; finish current work and restart the gateway');
@@ -75,17 +95,20 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       active++;
       if (!conversation) {
         try {
+          await persist(); // Reserve durably before creating/submitting native work.
           const info = await client.session.create({ title: 'opencode-claude', model: target, location: { directory: context.directory } }, { signal });
           conversation = { sessionID: info.id, busy: false, seen: new Set() };
           owned.add(conversation);
         } catch (cause) {
           active--; cache.failure = true; delete cache.busy;
           if (signal.aborted) requests.delete(key); // No prompt was submitted.
+          await persist();
           throw cause;
         }
       }
       const session = conversation;
       session.busy = true;
+      session.inFlight = cache;
       let text = '';
       let size = 0;
       const usage = zeroUsage();
@@ -110,6 +133,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       try {
         signal.throwIfAborted();
         if (closed) throw new RequestError('Gateway is stopping');
+        await persist(); // A crash after this point must not replay actions.
         // Set a baseline before resuming a blocked tool. Its assistant message
         // can have been partially streamed in the preceding frontend turn.
         for (const message of await client.session.context({ sessionID: session.sessionID }, { signal })) {
@@ -223,9 +247,12 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         if (session.tip) continuations.delete(session.tip);
         session.tip = digest([namespace, [...history, response]]);
         continuations.set(session.tip, session);
+        await persist();
         sink.complete(usage);
       } catch (cause) {
+        delete cache.reply;
         cache.failure = true;
+        session.recovery = true;
         delete cache.busy;
         if (cause instanceof ProviderError) cache.providerError = cause;
         let stopped = false;
@@ -244,6 +271,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
             if (noActions && !toolActivity) { requests.delete(key); owned.delete(session); }
           } catch { /* Without proof, preserve protection against duplicate actions. */ }
         }
+        await persist();
         throw cause;
       } finally {
         listeners.delete(session.sessionID);
@@ -255,6 +283,8 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
     async close() {
       closed = true;
       eventsAbort.abort();
+      for (const session of owned) if (session.busy || session.pending) session.recovery = true;
+      await persist();
       await Promise.allSettled([...owned].filter(s => s.busy || s.pending).map(s =>
         client.session.interrupt({ sessionID: s.sessionID }, { signal: AbortSignal.timeout(5000) })));
       await eventLoop;
