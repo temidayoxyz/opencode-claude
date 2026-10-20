@@ -57,3 +57,19 @@ test('conversation-isolation: disconnect aborts only the matching generation', a
     assert.equal((await fast.json()).content[0].text, 'separate');
   } finally { await gateway.close(); }
 });
+
+test('messages-stream: midstream errors are sanitized and never emit a false completion', async () => {
+  const gateway = await createGateway({ token: 'local-test', mappings: { alias: { providerID: 'fixture', id: 'text' } }, adapter: {
+    async generate(source, target, consume) {
+      await consume({ choices: [{ delta: { content: 'Partial' } }] });
+      throw new Error('PRIVATE_PROMPT PRIVATE_KEY');
+    },
+  } });
+  try {
+    const response = await fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': 'local-test' },
+      body: JSON.stringify({ model: 'alias', max_tokens: 10, stream: true, messages: [{ role: 'user', content: 'hello' }] }) });
+    const events = await response.text();
+    assert.match(events, /event: error/);
+    assert.doesNotMatch(events, /PRIVATE_|event: message_stop/);
+  } finally { await gateway.close(); }
+});
