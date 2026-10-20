@@ -61,9 +61,11 @@ export function parseMessagesRequest(value: unknown, mode: 'model' | 'session' =
   if (unsupported) throw new RequestError(`Unsupported request field: ${JSON.stringify(unsupported).slice(0, 80)}`);
   const model = string(request.model, 'Model');
   if (!model || model.length > 256) throw new RequestError('Invalid model identifier');
-  if (!Number.isInteger(request.max_tokens) || Number(request.max_tokens) < 1 || Number(request.max_tokens) > 65536) {
-    throw new RequestError('max_tokens must be an integer from 1 to 65536');
+  if (!Number.isSafeInteger(request.max_tokens) || Number(request.max_tokens) < 1
+    || (mode === 'model' && Number(request.max_tokens) > 65536)) {
+    throw new RequestError(mode === 'session' ? 'max_tokens must be a positive safe integer' : 'max_tokens must be an integer from 1 to 65536');
   }
+  // Session mode does not forward this frontend budget. OpenCode owns limits.
   if (request.stream !== undefined && typeof request.stream !== 'boolean') throw new RequestError('stream must be a boolean');
   if (request.thinking !== undefined) {
     const thinking = object(request.thinking, 'thinking');

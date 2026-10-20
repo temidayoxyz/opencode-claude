@@ -47,3 +47,14 @@ test('frontend tool advertisements do not replace or block native OpenCode tools
   assert.deepEqual(parseMessagesRequest(body, 'session').tools, []);
   assert.throws(() => parseMessagesRequest(body), /server-side tool/);
 });
+
+test('native sessions accept Desktop token budgets above the legacy adapter limit', () => {
+  const base = { model: 'alias', messages: [{ role: 'user', content: 'Hello' }] };
+  for (const max_tokens of [65537, 131072, 200000, 1000000]) {
+    assert.equal(parseMessagesRequest({ ...base, max_tokens }, 'session').options.maxTokens, max_tokens);
+    assert.throws(() => parseMessagesRequest({ ...base, max_tokens }), /65536/);
+  }
+  for (const max_tokens of [0, -1, 1.5, '131072', null, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => parseMessagesRequest({ ...base, max_tokens }, 'session'), /max_tokens/);
+  }
+});
