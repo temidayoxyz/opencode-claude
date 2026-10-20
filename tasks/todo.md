@@ -1,6 +1,6 @@
 # Proposed tasks: opencode-claude
 
-Status: **plan and checklist approved by the user on 2026-10-20; tasks 01–02 in progress**.
+Status: **plan and checklist approved by the user on 2026-10-20; tasks 01–02 passed, native gateway work next**.
 Plan: [plan.md](plan.md). Specification: [SPEC.md](../SPEC.md).
 
 These are small implementation slices, not completed features. File lists are expected touch points; preserve the five-file task limit by splitting a task if new files are needed. Every task must leave existing checks passing. A live provider rejection is not a passing integration result.
@@ -20,20 +20,22 @@ These are small implementation slices, not completed features. File lists are ex
 
 ## Task 02: Isolated OpenCode tool-boundary experiment
 
-- [ ] A disposable OpenCode runtime uses a deterministic local fixture model and supported extension APIs, without modifying the user's service or exposing provider credentials.
-- [ ] The external harness receives an actual model tool call, executes a harmless counter tool once, returns its result, and receives the corresponding final answer; OpenCode performs no duplicate action.
-- [ ] Record supported interfaces and pass/fail/blocked evidence, including cleanup and cancellation. If the requirement cannot be met, stop native integration and document why.
+- [x] A disposable OpenCode runtime uses a deterministic local fixture model and supported extension APIs, without modifying the user's service or exposing provider credentials.
+- [x] The external harness receives an actual model tool call, executes a harmless counter tool once, returns its result, and receives the corresponding final answer; OpenCode performs no duplicate action.
+- [x] Record supported interfaces and pass/fail/blocked evidence, including cleanup and cancellation. If the requirement cannot be met, stop native integration and document why.
 
 **Verify:** `node experiments/native-tools/verify.mjs`; inspect the recorded operation count, tool IDs, final response, cancellation result, and owned-process cleanup. This is a fixture test, not a live free-model test.
 
 **Depends on:** 01.
 **Expected files (5):** `experiments/native-tools/verify.mjs`, `experiments/native-tools/fixture-model.mjs`, `experiments/native-tools/plugin.mjs`, `experiments/native-tools/runtime.mjs`, `docs/tool-compatibility.md`.
 
+**Evidence:** [tool-compatibility.md](../docs/tool-compatibility.md). The verifier also passes transient-generation response capture with zero tool executions. This selects a simpler candidate adapter based on `session.generate` plus the official response hook; no suspended agent loop is required for that path. Claude-client and live provider acceptance remain separate pending checks.
+
 ### Checkpoint A — after 01–02
 
-- [ ] Build and checks pass.
-- [ ] Tool-boundary result is recorded honestly and independently from provider eligibility.
-- [ ] Review the evidence before promoting the experimental adapter; a failed boundary blocks tasks 03 onward until scope is resolved.
+- [x] Build and checks pass.
+- [x] Tool-boundary result is recorded honestly and independently from provider eligibility.
+- [x] Review the evidence before promoting the experimental adapter; a failed boundary blocks tasks 03 onward until scope is resolved.
 
 ## Task 03: Authenticated native text request
 

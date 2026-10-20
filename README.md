@@ -1,6 +1,6 @@
 # opencode-claude
 
-**Status: design and feasibility research. No working bridge or release yet.**
+**Status: compatibility prototype. Local OpenCode tool-boundary tests pass; the Claude gateway and launch commands are not implemented yet. No release is available.**
 
 A proposed open-source, locally installed gateway between Claude Code or Claude Desktop and a user's own OpenCode runtime. The project is intended for public GitHub distribution and Windows, macOS, and Linux installation.
 
@@ -23,9 +23,9 @@ The shared backend will have separate client setup paths: scoped gateway environ
 - The installed OpenCode CLI is version **2.0.32**. Its API differs substantially from the older server examples found in public documentation.
 - A direct free-model request was rejected. OpenCode's stateless and transient session generation APIs were also rejected.
 - A normal OpenCode session with its standard tools retained returned a specific network restriction: the hosted service said it detected abusive traffic from the current IP. That is the service's reported reason; this project has not independently established the cause.
-- Native Claude tool compatibility has not yet been demonstrated.
+- A real OpenCode runtime passed the local external-tool and transient-response experiments. Native Claude client compatibility has not yet been demonstrated.
 
-See [the research report](docs/FEASIBILITY.md) and [the proposed specification](SPEC.md).
+See [the research report](docs/FEASIBILITY.md), [the passing local experiment](docs/tool-compatibility.md), and [the specification](SPEC.md).
 
 ## Limits
 
