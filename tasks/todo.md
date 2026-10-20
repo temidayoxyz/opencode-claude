@@ -39,7 +39,7 @@ These are small implementation slices, not completed features. File lists are ex
 
 ## Task 03: Authenticated native text request
 
-Implementation is split into smaller increments to keep each change reviewable: 03a request/conversation validation (implemented with four passing test groups); 03b runtime/plugin adapter; 03c authenticated HTTP path. Task 03 remains incomplete until the actual endpoint passes its integration checks.
+Implementation is split into smaller increments to keep each change reviewable: 03a request/conversation validation (four passing test groups); 03b typed owned runtime and plugin adapter (real-runtime tool/result check passed with zero tool executions); 03c authenticated HTTP path. Stream framing also has three passing test groups for Unicode/line boundaries, bounded/truncated input, and cancellation. Task 03 remains incomplete until the actual endpoint passes its integration checks.
 
 - [ ] A loopback-only gateway authenticates local credentials and validates Messages input before forwarding through the proven OpenCode adapter.
 - [ ] A fixture-backed text/multi-turn request returns a valid native Messages response; wrong credentials, oversized input, and unsupported content fail explicitly.

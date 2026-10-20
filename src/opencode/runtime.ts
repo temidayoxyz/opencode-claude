@@ -89,11 +89,11 @@ export async function launchRuntime(options: RuntimeOptions): Promise<RunningRun
     child.stdin.end();
     for (const signal of ['SIGTERM', 'SIGKILL'] as const) {
       if (child.exitCode !== null || child.signalCode !== null) break;
-      const stopped = await Promise.race([exited.then(() => true), delay(3000).then(() => false)]);
+      const stopped = await Promise.race([exited.then(() => true), delay(3000, undefined, { ref: false }).then(() => false)]);
       if (stopped) break;
       child.kill(signal);
     }
-    await Promise.race([exited, delay(3000)]);
+    await Promise.race([exited, delay(3000, undefined, { ref: false })]);
     if (child.exitCode === null && child.signalCode === null) throw new Error('The owned OpenCode process did not exit');
   }
   try {
