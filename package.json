@@ -2,16 +2,20 @@
   "name": "opencode-claude",
   "version": "0.1.0-dev.0",
   "private": true,
+  "license": "MIT",
   "description": "Local OpenCode integration for Claude Code and Claude Desktop",
   "type": "module",
   "bin": { "opencode-claude": "dist/cli.js" },
   "engines": { "node": ">=24 <27" },
   "packageManager": "npm@11.19.1",
-  "files": ["dist", "README.md"],
+  "files": ["dist", "README.md", "LICENSE", "docs/compatibility.md", "docs/install.md"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "node --test"
+    "lint": "tsc -p tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch",
+    "test": "node --test",
+    "test:runtime": "node tests/runtime-check.mjs && node tests/adapter-check.mjs && node tests/cancellation-check.mjs && node tests/lifecycle-check.mjs",
+    "test:claude": "node scripts/smoke-claude.mjs --fixture"
   },
   "devDependencies": {
     "@types/node": "24.10.0",
