@@ -58,10 +58,12 @@ export default {
     await context.session.hook('http.response', async (event) => {
       if (event.kind !== 'generate') return;
       if (!event.response.ok) {
-        await fetch(new URL('/failure', endpoint), {
+        const accepted = await fetch(new URL('/failure', endpoint), {
           method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(5000),
           body: JSON.stringify({ directory, sessionID: event.sessionID, status: event.response.status }),
         });
+        await accepted.arrayBuffer();
+        if (!accepted.ok) throw new Error(`Local status consumer stopped: ${accepted.status}`);
         return;
       }
       if (!new URL(event.request.url).pathname.endsWith('/chat/completions')) {
@@ -77,6 +79,7 @@ export default {
           method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(15000),
           body: JSON.stringify({ directory, sessionID: event.sessionID, frame: JSON.parse(data) as unknown }),
         });
+        await accepted.arrayBuffer();
         if (!accepted.ok) throw new Error(`Local response consumer stopped: ${accepted.status}`);
       }
     });

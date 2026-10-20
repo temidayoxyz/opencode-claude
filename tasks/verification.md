@@ -6,7 +6,7 @@ Date: 2026-10-20. Version: 0.1.0-dev.0, experimental. Platform exercised: Window
 
 - Strict TypeScript check, unused-code/fallthrough lint and production build pass with Node 24.22.0 / npm 11.19.1.
 - **24 unit/contract tests pass**, including native event order, parallel tool arguments, malformed/truncated generations, tool errors, body limits, authentication/origin policy, disconnect isolation, secret-creation races, profile preservation/restore, model selection, ownership and explicit smoke result recording.
-- The clean local Git clone built with `npm ci --ignore-scripts`, lint and build, then passed its then-current 23 tests. One additional CLI smoke success/denial test subsequently passed in the original checkout; it changes no runtime code.
+- The clean local Git clone built with `npm ci --ignore-scripts`, lint and build, and the final checkout passed all 24 tests before packaging.
 - Real OpenCode 2.0.32: typed runtime, complete conversation/tool-result adapter and bounded-cache recycle checked. The adapter check crosses 32 completed generations and successfully generates again after recycling.
 - Real OpenCode cancellation: one waiting provider call is actually cancelled while a separate concurrent generation completes. This is distinct from the HTTP-only disconnect test.
 - Real CLI lifecycle: three concurrent starts reuse one authenticated worker; stale state is replaced without terminating its recorded PID; setup/default/export and repeated owned shutdown pass. Wrong-instance protection and occupied-port errors have independent unit coverage.
