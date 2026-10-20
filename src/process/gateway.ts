@@ -125,8 +125,15 @@ export async function serve(root: string): Promise<void> {
     adapter = createSessionBackend(await connectOpenCode(), { journal: await openSessionJournal(path.join(root, 'sessions.json')) });
     const models = catalog(await adapter.models());
     const mappings = Object.fromEntries(models.filter(model => model.supported).flatMap(model => [[model.key, model.target], [model.alias, model.target]]));
-    gateway = await createGateway({ sessions: adapter, clients: await clientRegistry(path.join(root, 'clients.json')), token, instance, mappings, models,
+    let port: number | undefined;
+    try {
+      const saved = await readJSON(path.join(root, 'endpoint.json')) as { port?: unknown };
+      if (!Number.isInteger(saved.port) || Number(saved.port) < 1 || Number(saved.port) > 65535) throw new Error('Invalid endpoint state');
+      port = Number(saved.port);
+    } catch (cause) { if ((cause as NodeJS.ErrnoException).code !== 'ENOENT') throw cause; }
+    gateway = await createGateway({ ...(port ? { port } : {}), sessions: adapter, clients: await clientRegistry(path.join(root, 'clients.json')), token, instance, mappings, models,
       shutdown: () => { void stop().then(() => process.exit(0), () => process.exit(1)); } });
+    await atomicJSON(path.join(root, 'endpoint.json'), { port: Number(new URL(gateway.url).port) });
     await atomicJSON(path.join(root, 'service.json'), { url: gateway.url, instance, pid: process.pid });
     for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { void stop().then(() => process.exit(0), () => process.exit(1)); });
   } catch (cause) {

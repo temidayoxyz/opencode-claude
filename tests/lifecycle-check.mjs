@@ -28,5 +28,9 @@ try {
   await command('stop');
   await assert.rejects(readFile(path.join(root, 'service.json')), { code: 'ENOENT' });
   await command('stop');
+  await command('start');
+  const restarted = JSON.parse(await readFile(path.join(root, 'service.json'), 'utf8'));
+  assert.equal(restarted.url, state.url, 'Restart preserves the frontend endpoint');
+  await command('stop');
 } finally { await command('stop'); }
 console.log('PASS: concurrent starts, authenticated state, setup/catalog/default/export, owned shutdown, repeated stop');
