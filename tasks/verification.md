@@ -2,6 +2,10 @@
 
 ## Current: 0.2.0-dev.1 ? Desktop/streaming compatibility
 
+- The installed 0.2.0-dev.1 package was activated. The existing owned Desktop profile was refreshed with its real model ID, new authenticated gateway URL and the same workspace/selection, after backing up its prior contents.
+- A request through that actual Desktop profile, with adaptive thinking, frontend system role, frontend web-search advertisement, streaming and max_tokens=1, returned HTTP 200 from free DeepSeek. Concatenated visible deltas exactly equalled the native stored assistant text; no duplicate rendering occurred.
+- A supplemental interactive terminal-banner check stopped at the folder-trust prompt. Automatic approval review rejected granting persistent project trust merely for that check. No trust was granted; the noninteractive CLI and live Desktop-profile checks above remain passing.
+
 - The reported conversation was confirmed through the official OpenCode API as DeepSeek V4.1 Flash Free. Its native response contained the reported sentence once, with a separate reasoning block. The gateway's text-ordinal/context-index mismatch caused the duplicate rendering.
 - The Sonnet alias was present in frontend-injected user context. New launches and profiles use the real provider/model ID and custom model name; earlier aliases remain accepted.
 - Desktop thinking preferences are accepted in native-session mode. Custom-model frontend system/developer roles and tool advertisements no longer block a native session; OpenCode retains its own instructions and tools.
