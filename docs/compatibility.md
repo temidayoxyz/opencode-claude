@@ -11,6 +11,7 @@ Recorded 2026-10-20 for **0.2.0-dev.2**. The default backend is a genuine OpenCo
 | Native tools and permissions | Local fixture: permission shown, no file before approval, one native write after approval, result consumed, next turn continued the same session |
 | Retry safety | Completed requests replay; in-progress or failed requests are rejected without silently running actions again |
 | Cancellation/isolation | Genuine OpenCode provider disconnect verified; another conversation completes and the normal service remains healthy |
+| Installed 0.2.0-dev.2 + live free DeepSeek | Selected Desktop profile route accepted a 131,072-token frontend budget and adaptive thinking; completed retry made no inference call; next turn continued the same native session after gateway restart |
 | Restart recovery | Completed replies and continuations reload, credentials remain isolated, incomplete tasks stay blocked, corrupt journals fail closed, and endpoint reuse passes |
 | Gateway lifecycle | Concurrent starts reuse one authenticated worker; setup/catalog/default/export and owned shutdown pass without hosted inference |
 | Desktop profile | Preservation, backup and restore tested in disposable directories; Windows Desktop 2.42304.2.0 schema inspected |

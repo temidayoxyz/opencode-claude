@@ -34,5 +34,13 @@
   },
   "dependencies": {
     "@opencode/client": "2.0.32"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/temidayoxyz/opencode-claude.git"
+  },
+  "homepage": "https://github.com/temidayoxyz/opencode-claude#readme",
+  "bugs": {
+    "url": "https://github.com/temidayoxyz/opencode-claude/issues"
   }
 }

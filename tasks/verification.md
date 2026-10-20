@@ -4,6 +4,8 @@
 
 Completed continuation mappings and retry replies now persist outside the checkout. In-flight tasks are reserved before native submission and stay protected after interruption/restart. Desktop route and large-budget request regressions pass automated tests. Desktop Chat and Code UI checks remain open; earlier memory-only frontend histories require a new chat once.
 
+The installed 0.2.0-dev.2 package also passed a live DeepSeek check using the selected Desktop profile credential and compatibility route, a 131,072-token budget and adaptive thinking. After an owned gateway restart, the address was unchanged, an exact retry added no native messages, and the next user turn continued the same native session. Actual Desktop UI verification remains pending.
+
 The evidence below is historical and refers to the version named in each entry. Earlier model-only limitations were superseded by the genuine session backend. GitHub publication is recorded by the remote repository and commit history; npm publication remains disabled.
 
 ---
