@@ -24,14 +24,14 @@ Distribution is GitHub only. npm is used as a local build/installation tool; no 
 
 ```sh
 opencode-claude models --free
-opencode-claude run claude --model opencode/minimax-m3.1-flash-free
-opencode-claude run desktop --model opencode/deepseek-v4.1-flash-free
+opencode-claude run claude --model opencode/deepseek-v4.1-flash-free
+opencode-claude run desktop --model opencode/glm-5.3-flash-free
 ```
 
 Or save a default:
 
 ```sh
-opencode-claude model set opencode/minimax-m3.1-flash-free
+opencode-claude model set opencode/deepseek-v4.1-flash-free
 opencode-claude run claude
 opencode-claude run desktop
 ```
@@ -42,7 +42,7 @@ Each launch starts the gateway if needed. Terminal and Desktop can use different
 
 ```sh
 opencode-claude doctor
-opencode-claude smoke --model opencode/minimax-m3.1-flash-free
+opencode-claude smoke --model opencode/deepseek-v4.1-flash-free
 opencode-claude stop
 ```
 

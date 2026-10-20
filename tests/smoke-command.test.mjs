@@ -24,22 +24,28 @@ test('provider-errors: opt-in smoke records real command success or denial with 
   } });
   try {
     await writeFile(path.join(root, 'service.json'), JSON.stringify({ url: gateway.url, instance: gateway.instance, pid: process.pid }));
-    async function check() {
-      const child = spawn(process.execPath, [fileURLToPath(new URL('../dist/cli.js', import.meta.url)), 'smoke', '--model', model.key],
+    async function check(...args) {
+      const child = spawn(process.execPath, [fileURLToPath(new URL('../dist/cli.js', import.meta.url)), ...args],
         { env: { ...process.env, OPENCODE_CLAUDE_HOME: root }, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
       let output = '';
       child.stdout.on('data', chunk => { output += chunk; }); child.stderr.on('data', chunk => { output += chunk; });
       const code = await new Promise((resolve, reject) => { child.once('error', reject); child.once('exit', resolve); });
-      return { code, output, record: JSON.parse(await readFile(path.join(root, 'access-check.json'), 'utf8')) };
+      return { code, output };
     }
-    const success = await check();
+    const success = await check('smoke', '--model', model.key);
     assert.equal(success.code, 0, success.output);
-    assert.equal(success.record.result, 'passed (text only)');
+    assert.equal(JSON.parse(await readFile(path.join(root, 'access-check.json'), 'utf8')).result, 'passed (text only)');
     denied = true;
-    const failure = await check();
+    const failure = await check('smoke', '--model', model.key);
+    const record = JSON.parse(await readFile(path.join(root, 'access-check.json'), 'utf8'));
     assert.equal(failure.code, 1);
-    assert.match(failure.record.reason, /denied access/);
-    assert.doesNotMatch(failure.output + JSON.stringify(failure.record), /PRIVATE_SECRET/);
+    assert.match(record.reason, /denied access/);
+    assert.doesNotMatch(failure.output + JSON.stringify(record), /PRIVATE_SECRET/);
     assert.equal(requests, 2);
+    await writeFile(path.join(root, 'settings.json'), JSON.stringify({ version: 1, defaultModel: 'removed/model' }));
+    const setup = await check('setup');
+    assert.equal(setup.code, 0);
+    assert.match(setup.output, /no longer available/);
+    assert.equal(JSON.parse(await readFile(path.join(root, 'settings.json'), 'utf8')).defaultModel, undefined);
   } finally { await gateway.close(); }
 });

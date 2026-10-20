@@ -14,7 +14,7 @@
     "check": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit --noUnusedLocals --noUnusedParameters --noFallthroughCasesInSwitch",
     "test": "node --test",
-    "test:runtime": "node tests/runtime-check.mjs && node tests/adapter-check.mjs && node tests/cancellation-check.mjs && node tests/lifecycle-check.mjs",
+    "test:runtime": "node tests/runtime-check.mjs && node tests/adapter-check.mjs && node tests/cancellation-check.mjs && node tests/lifecycle-check.mjs && node tests/provider-status-check.mjs",
     "test:claude": "node scripts/smoke-claude.mjs --fixture"
   },
   "devDependencies": {

@@ -19,6 +19,7 @@ interface ActiveRequest {
   sessionID?: string;
   consume: Consumer;
   frames: number;
+  failureStatus?: number;
   controller: AbortController;
 }
 export interface OpenCodeAdapter {
@@ -72,11 +73,16 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
         if (!current || current.controller.signal.aborted) return json(response, 410, { error: 'request_expired' });
         return json(response, 200, current.source);
       }
-      if (request.method === 'POST' && url.pathname === '/frame') {
+      if (request.method === 'POST' && ['/frame', '/failure'].includes(url.pathname)) {
         const event = object(await readBody(request));
         const current = typeof event.directory === 'string' ? active.get(key(event.directory)) : undefined;
         if (!current || current.controller.signal.aborted || current.sessionID !== event.sessionID) {
           return json(response, 410, { error: 'request_expired' });
+        }
+        if (url.pathname === '/failure') {
+          if (!Number.isInteger(event.status) || Number(event.status) < 400 || Number(event.status) > 599) return json(response, 400, { error: 'invalid_status' });
+          current.failureStatus = Number(event.status);
+          return json(response, 200, { accepted: true });
         }
         await current.consume(event.frame);
         current.frames++;
@@ -183,6 +189,9 @@ export async function createAdapter(options: AdapterOptions): Promise<OpenCodeAd
             prompt: 'The external Messages context is supplied by the opencode-claude plugin.',
           }, combined);
           if (!current.frames) throw new Error('The model did not produce a supported HTTP response');
+        } catch (cause) {
+          if (current.failureStatus) throw new Error(`Provider returned ${current.failureStatus}`);
+          throw cause;
         } finally {
           signal?.removeEventListener('abort', forwardAbort);
           if (current.sessionID) {

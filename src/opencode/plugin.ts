@@ -56,7 +56,14 @@ export default {
       Object.assign(event.options, request.options);
     });
     await context.session.hook('http.response', async (event) => {
-      if (event.kind !== 'generate' || !event.response.ok) return;
+      if (event.kind !== 'generate') return;
+      if (!event.response.ok) {
+        await fetch(new URL('/failure', endpoint), {
+          method: 'POST', headers, redirect: 'error', signal: AbortSignal.timeout(5000),
+          body: JSON.stringify({ directory, sessionID: event.sessionID, status: event.response.status }),
+        });
+        return;
+      }
       if (!new URL(event.request.url).pathname.endsWith('/chat/completions')) {
         throw new Error('This adapter currently requires the OpenAI Chat Completions wire protocol');
       }

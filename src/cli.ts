@@ -66,6 +66,10 @@ async function main(): Promise<void> {
   const models = await gatewayModels(connection);
   if (command === 'setup') {
     const saved = await settings(root);
+    if (saved.defaultModel && !models.some(model => model.key === saved.defaultModel && model.supported)) {
+      delete saved.defaultModel;
+      console.log('The previous default is no longer available in the current catalog. Select a model from models.');
+    }
     const recommended = models.find(model => model.key === 'opencode/minimax-m3.1-flash-free' && model.supported);
     if (!saved.defaultModel && recommended) saved.defaultModel = recommended.key;
     await atomicJSON(path.join(root, 'settings.json'), saved);
@@ -83,6 +87,9 @@ async function main(): Promise<void> {
   }
   if (command === 'doctor') {
     console.log(`Node: ${process.version}\nOpenCode: 2.0.32 (verified runtime contract)\nGateway: healthy (${connection.url})\nCatalog: ${models.length} models, ${models.filter(model => model.supported).length} supported text/tool routes\nState: ${root}`);
+    const saved = await settings(root);
+    try { console.log(`Default model: ${selectModel(models, saved.defaultModel).key}`); }
+    catch { console.log('Default model: missing or unavailable; run models, then model set <provider/model>.'); }
     try {
       const version = spawnSync(claudeBinary(), ['--version'], { encoding: 'utf8', windowsHide: true, timeout: 10000 });
       console.log(version.status === 0 ? `Claude Code: ${version.stdout.trim()}` : 'Claude Code: cannot execute');

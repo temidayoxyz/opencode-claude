@@ -29,9 +29,9 @@ A maintainer can attach that file to a GitHub release. No registry account or pu
 ## Use
 
 ```sh
-opencode-claude model set opencode/minimax-m3.1-flash-free
+opencode-claude model set opencode/deepseek-v4.1-flash-free
 opencode-claude run claude
-opencode-claude run desktop --model opencode/deepseek-v4.1-flash-free
+opencode-claude run desktop --model opencode/glm-5.3-flash-free
 ```
 
 The model names above are examples from the 2026-10-20 catalog, not a promise of access. `models --free` means the catalog lists zero input/output prices. A provider can still refuse the request or apply evaluation quotas. `setup`, `models`, and `doctor` make no hosted inference calls.
@@ -39,7 +39,7 @@ The model names above are examples from the 2026-10-20 catalog, not a promise of
 An explicit access check makes one gateway generation request (the provider/runtime may have its own retry behavior) and may consume provider credits:
 
 ```sh
-opencode-claude smoke --model opencode/minimax-m3.1-flash-free
+opencode-claude smoke --model opencode/deepseek-v4.1-flash-free
 ```
 
 Do not keep retrying a denied network/free-tier request. Resolve it with the provider, or explicitly select another legitimate provider. The gateway never selects another model as a fallback.
@@ -47,7 +47,7 @@ Do not keep retrying a denied network/free-tier request. Resolve it with the pro
 Forward Claude arguments after `--`:
 
 ```sh
-opencode-claude run claude --model opencode/minimax-m3.1-flash-free -- -p "Explain this repository"
+opencode-claude run claude --model opencode/deepseek-v4.1-flash-free -- -p "Explain this repository"
 ```
 
 Terminal I/O and Claude's normal tool permissions are preserved. The launcher configures only its child process. Its compatibility settings omit native thinking parameters and load tools upfront. Restart an existing Claude conversation through this command to change its launch selection; changing the saved default affects future launches.

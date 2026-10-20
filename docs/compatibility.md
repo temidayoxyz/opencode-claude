@@ -41,6 +41,8 @@ The normal user-managed OpenCode service is never stopped or reconfigured. `stop
 
 ## Free access and names
 
+Final installed-package check: `opencode/minimax-m3.1-flash-free` was absent from the refreshed catalog, so no inference was attempted for it. One explicit `opencode/deepseek-v4.1-flash-free` smoke request failed without a supported answer. Its gateway error did not establish a more specific cause; the earlier ordinary-OpenCode network refusal remains separate historical evidence. A later local 403 fixture verifies that provider HTTP status is preserved without disclosing bodies. No additional hosted retry was made. Setup clears unavailable saved defaults; doctor reports a missing/unavailable selection.
+
 OpenChamber and OpenWork demonstrate using a genuine OpenCode backend, not a guarantee that hosted free endpoints accept every external workflow. This implementation uses supported versioned OpenCode session/plugin interfaces. It does not impersonate a different client, rotate networks, or defeat provider checks. The free-tier/network refusal and tool-shape eligibility concerns are described in [the research report](FEASIBILITY.md).
 
 The neutral `claude-sonnet-4-6-oc-...` identifier is a Desktop/client compatibility alias, derived from the exact provider/model key. It does not mean the underlying model is Sonnet or has Sonnet performance. Desktop displays its actual model name. No Claude subscription entitlement is unlocked.
