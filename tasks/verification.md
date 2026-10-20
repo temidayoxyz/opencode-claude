@@ -8,7 +8,9 @@
 - Genuine native cancellation reaches the provider, leaves an independent conversation intact, and rejects a retry of the interrupted task without rerunning it. The OpenCode service remains healthy.
 - Actual Claude Code 2.1.296 launcher passes with Claude tools disabled and conflicting saved routing/auth settings loaded: OpenCode executes one native write, consumes the result and returns READY.
 - **Live free DeepSeek passes:** ordinary official SDK session returned READY; production `smoke --model opencode/deepseek-v4.1-flash-free` passed; actual production Claude terminal task created a disposable proof file containing exactly `READY_NATIVE_FREE` and returned READY. No paid fallback, provider header spoofing, network change or permission override was used.
-- Dependency audit reports **0 vulnerabilities** after adding the exact official SDK and its locked dependencies.
+- Dependency audit reports **0 vulnerabilities** after adding the exact official SDK and its locked dependencies. All **8 registry signatures** and **3 available attestations** verify.
+- A fresh local clone of committed source installed cached dependencies with scripts disabled, passed lint/build and all 28 tests, and produced a 23-file compiled package (34,697 compressed bytes). Both package and source ZIP contain no runtime/cache/dependency directories or matches for the checked credential patterns. The package installed into the user's existing npm command prefix with scripts disabled; registry publication was not used.
+- The installed package's genuine-session smoke check also passes with free DeepSeek. That tested model is saved as default, and a scoped Desktop profile was exported without replacing the user's active existing profile.
 - Desktop profile file/schema tests remain passing. Desktop chat/Code UI and macOS/Linux native clients are independently unverified. GitHub publication has not occurred, and npm registry publication remains disabled.
 
 The earlier record below is historical and describes the superseded model-only design; its free-access failure is not the current result.
