@@ -75,3 +75,23 @@ test('corrupted session state fails closed rather than discarding retry protecti
     await assert.rejects(openSessionJournal(file));
   }
 });
+
+test('retry protection reaches disk before OpenCode can execute a prompt', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'oc-journal-crash-'));
+  const file = path.join(root, 'sessions.json');
+  const f = fixture();
+  let calls = 0;
+  f.client.session.prompt = async () => {
+    calls++;
+    const reservation = JSON.parse(await readFile(file, 'utf8'));
+    assert.equal(reservation.requests[0].failure, true);
+    assert.equal(reservation.conversations[0].blocked, true);
+    throw Error('Simulated connection loss after native submission');
+  };
+  let backend = createSessionBackend(f.client, { events: false, journal: await openSessionJournal(file) });
+  await assert.rejects(send(backend, first), /connection loss/);
+  await backend.close();
+  backend = createSessionBackend(f.client, { events: false, journal: await openSessionJournal(file) });
+  try { await assert.rejects(send(backend, first), /previous attempt/); assert.equal(calls, 1); }
+  finally { await backend.close(); }
+});

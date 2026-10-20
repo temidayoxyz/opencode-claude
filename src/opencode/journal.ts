@@ -45,6 +45,7 @@ export async function openSessionJournal(filename: string): Promise<SessionJourn
   let saving = Promise.resolve();
   return { initial, save(state) {
     const snapshot = structuredClone(state);
+    if (Buffer.byteLength(JSON.stringify(snapshot, null, 2)) > 72 * 1024 * 1024) return Promise.reject(new Error('Session journal is too large'));
     // Preserve submission order across independent conversations. A failed
     // disk write keeps subsequent operations closed until restart/repair.
     saving = saving.then(() => atomicJSON(filename, snapshot));

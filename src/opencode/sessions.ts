@@ -284,10 +284,13 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       closed = true;
       eventsAbort.abort();
       for (const session of owned) if (session.busy || session.pending) session.recovery = true;
-      await persist();
+      let journalError: unknown;
+      const saved = persist().catch(cause => { journalError = cause; });
       await Promise.allSettled([...owned].filter(s => s.busy || s.pending).map(s =>
         client.session.interrupt({ sessionID: s.sessionID }, { signal: AbortSignal.timeout(5000) })));
+      await saved;
       await eventLoop;
+      if (journalError) throw journalError;
       // The normal OpenCode service and saved conversations belong to the user.
     },
   };
