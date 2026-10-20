@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { stateDirectory, settings, atomicJSON, readJSON } from './config/store.js';
 import { selectModel } from './config/models.js';
-import { ensureGateway, gatewayModels, serve, stopGateway } from './process/gateway.js';
+import { ensureGateway, gatewayModels, serve, stopGateway, registerClient } from './process/gateway.js';
 import { claudeBinary, launchClaude } from './claude-code/launch.js';
 import { launchDesktop } from './claude-desktop/launch.js';
 import { restoreProfile, exportProfile } from './claude-desktop/profile.js';
@@ -80,13 +80,13 @@ async function main(): Promise<void> {
     const selected = models.filter(model => !args.includes('--free') || model.free);
     if (args.includes('--json')) console.log(JSON.stringify(selected, null, 2));
     else {
-      for (const model of selected) console.log(`${model.supported ? 'protocol OK' : 'unsupported'}\t${model.free ? 'listed free' : 'check pricing'}\t${model.key}`);
-      console.log('\nCatalog and protocol status only; access is unverified until a smoke test passes.');
+      for (const model of selected) console.log(`${model.supported ? 'agent ready' : 'unsupported'}\t${model.free ? 'listed free' : 'check pricing'}\t${model.key}`);
+      console.log('\nOpenCode agent capability only; access is unverified until a smoke test passes.');
     }
     return;
   }
   if (command === 'doctor') {
-    console.log(`Node: ${process.version}\nOpenCode: 2.0.32 (verified runtime contract)\nGateway: healthy (${connection.url})\nCatalog: ${models.length} models, ${models.filter(model => model.supported).length} supported text/tool routes\nState: ${root}`);
+    console.log(`Node: ${process.version}\nOpenCode: 2.0.32 (official SDK, genuine sessions)\nGateway: healthy (${connection.url})\nCatalog: ${models.length} models, ${models.filter(model => model.supported).length} agent models\nState: ${root}`);
     const saved = await settings(root);
     try { console.log(`Default model: ${selectModel(models, saved.defaultModel).key}`); }
     catch { console.log('Default model: missing or unavailable; run models, then model set <provider/model>.'); }
@@ -106,17 +106,21 @@ async function main(): Promise<void> {
     console.log(`Default model: ${model.key}`); return;
   }
   if (command === 'run' && args[1] === 'claude') {
-    console.error(`Using ${model.key} through local OpenCode. Provider pricing and access rules apply.`);
-    process.exitCode = await launchClaude(connection, model, forwarded); return;
+    console.error(`Using ${model.key} through a genuine OpenCode session. OpenCode executes tools in ${process.cwd()} under your OpenCode permissions.`);
+    process.exitCode = await launchClaude(await registerClient(connection, model, 'claude'), model, forwarded); return;
   }
-  if (command === 'desktop') { console.log(`Profile exported: ${await exportProfile(root, connection, model)}`); return; }
-  if (command === 'run') { console.log(await launchDesktop(root, connection, model)); return; }
+  if (command === 'desktop') { console.log(`Profile exported: ${await exportProfile(root, await registerClient(connection, model, 'desktop'), model)}`); return; }
+  if (command === 'run') {
+    console.log(`OpenCode executes tools in ${process.cwd()} under your OpenCode permissions.`);
+    console.log(await launchDesktop(root, await registerClient(connection, model, 'desktop'), model)); return;
+  }
   if (command === 'smoke') {
     let result = 'failed';
     let failure: string | undefined;
     try {
-      const response = await fetch(connection.url + '/v1/messages', { method: 'POST', redirect: 'error',
-        headers: { 'content-type': 'application/json', 'x-api-key': connection.token }, signal: AbortSignal.timeout(150000),
+      const client = await registerClient(connection, model, 'smoke');
+      const response = await fetch(client.url + '/v1/messages', { method: 'POST', redirect: 'error',
+        headers: { 'content-type': 'application/json', 'x-api-key': client.token }, signal: AbortSignal.timeout(150000),
         body: JSON.stringify({ model: model.alias, max_tokens: 32, messages: [{ role: 'user', content: 'Reply only READY.' }] }) });
       const value = await response.json() as { content?: { type: string; text?: string }[]; error?: { message?: string } };
       if (!response.ok) failure = value.error?.message ?? 'Generation failed';

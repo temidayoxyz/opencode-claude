@@ -13,6 +13,7 @@ export interface ModelMessage {
 }
 export interface ModelTool { name: string; description: string; input: JsonObject }
 export interface ParsedMessages {
+  userId?: string;
   model: string;
   stream: boolean;
   system: { type: 'text'; text: string }[];
@@ -148,6 +149,9 @@ export function parseMessagesRequest(value: unknown): ParsedMessages {
     }
   }
   if (!messages.length) throw new RequestError('At least one message is required');
+  const userId = request.metadata === undefined ? undefined : object(request.metadata, 'metadata').user_id;
+  if (userId !== undefined && (typeof userId !== 'string' || userId.length > 1024)) throw new RequestError('Invalid metadata.user_id');
   return { model, stream: request.stream === true, tools, messages, options,
+    ...(typeof userId === 'string' ? { userId } : {}),
     system: request.system === undefined ? [] : texts(request.system, 'system') };
 }

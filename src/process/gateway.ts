@@ -6,7 +6,9 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { atomicJSON, localToken, readJSON } from '../config/store.js';
 import { catalog, type CatalogModel } from '../config/models.js';
-import { createAdapter } from '../opencode/adapter.js';
+import { createSessionBackend } from '../opencode/sessions.js';
+import { connectOpenCode } from '../opencode/connection.js';
+import { clientRegistry, type ClientContext } from '../gateway/clients.js';
 import { createGateway } from '../gateway/server.js';
 
 interface Service { url: string; instance: string; pid: number }
@@ -95,8 +97,17 @@ export async function stopGateway(root: string): Promise<boolean> {
 export async function gatewayModels(connection: Connection): Promise<CatalogModel[]> {
   return await localRequest(connection, '/_catalog') as CatalogModel[];
 }
+export async function registerClient(connection: Connection, model: CatalogModel, kind: ClientContext['kind'], directory = process.cwd()): Promise<Connection> {
+  const response = await fetch(connection.url + '/_clients', { method: 'POST', redirect: 'error',
+    headers: { authorization: `Bearer ${connection.token}`, 'content-type': 'application/json' }, signal: AbortSignal.timeout(10000),
+    body: JSON.stringify({ directory: path.resolve(directory), model: model.key, kind }) });
+  if (!response.ok) throw new Error('Cannot register this workspace with the local gateway');
+  const result = await response.json() as { token?: string };
+  if (!result.token || !/^[a-zA-Z0-9_-]{43}$/.test(result.token)) throw new Error('Invalid gateway client registration');
+  return { ...connection, token: result.token };
+}
 export async function serve(root: string): Promise<void> {
-  let adapter: Awaited<ReturnType<typeof createAdapter>> | undefined;
+  let adapter: ReturnType<typeof createSessionBackend> | undefined;
   let gateway: Awaited<ReturnType<typeof createGateway>> | undefined;
   const instance = randomBytes(16).toString('hex');
   let stopping = false;
@@ -110,17 +121,17 @@ export async function serve(root: string): Promise<void> {
   };
   try {
     const token = await localToken(root);
-    adapter = await createAdapter({ stateRoot: path.join(root, 'runtime') });
+    adapter = createSessionBackend(await connectOpenCode());
     const models = catalog(await adapter.models());
     const mappings = Object.fromEntries(models.filter(model => model.supported).map(model => [model.alias, model.target]));
-    gateway = await createGateway({ adapter, token, instance, mappings, models,
+    gateway = await createGateway({ sessions: adapter, clients: await clientRegistry(path.join(root, 'clients.json')), token, instance, mappings, models,
       shutdown: () => { void stop().then(() => process.exit(0), () => process.exit(1)); } });
     await atomicJSON(path.join(root, 'service.json'), { url: gateway.url, instance, pid: process.pid });
     for (const signal of ['SIGINT', 'SIGTERM'] as const) process.once(signal, () => { void stop().then(() => process.exit(0), () => process.exit(1)); });
   } catch (cause) {
     await stop();
     // Startup has no model prompt. Only known prerequisite errors are retained.
-    const message = cause instanceof Error && /OpenCode .*unverified|requires 2\.0\.32|Install OpenCode|Cannot execute/.test(cause.message)
+    const message = cause instanceof Error && /OpenCode .*unverified|requires 2\.0\.32|Install OpenCode|Cannot execute|OpenCode service is unavailable/.test(cause.message)
       ? cause.message : 'Gateway startup failed. Check OpenCode 2.0.32 and the provider configuration.';
     await atomicJSON(path.join(root, 'startup-error.json'), { error: message });
     process.exitCode = 1;

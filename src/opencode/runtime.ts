@@ -11,8 +11,10 @@ export interface RuntimeOptions {
   config: Record<string, unknown>;
   isolated?: boolean;
   nativeBinary?: string;
+  permissionMode?: 'deny' | 'ask' | 'allow';
 }
 export interface RunningRuntime {
+  connection: { baseUrl: string; headers: { authorization: string } };
   version: string;
   workspace: string;
   root: string;
@@ -20,7 +22,7 @@ export interface RunningRuntime {
   stop(): Promise<void>;
 }
 
-function nativeBinary(): string {
+export function nativeBinary(): string {
   if (process.env.OPENCODE_CLAUDE_BIN) return process.env.OPENCODE_CLAUDE_BIN;
   if (process.platform !== 'win32') return 'opencode';
   const candidates = [
@@ -60,7 +62,7 @@ export async function launchRuntime(options: RuntimeOptions): Promise<RunningRun
   const redact = (text: string) => secrets.reduce((result, secret) => result.replaceAll(secret, '[redacted]'), text);
   const configPath = path.join(root, 'config/runtime.json');
   await writeFile(configPath, JSON.stringify({ ...options.config, update: 'disable', share: 'disabled',
-    snapshots: false, warming: false, permissions: [{ action: '*', resource: '*', effect: 'deny' }],
+    snapshots: false, warming: false, permissions: [{ action: '*', resource: '*', effect: options.permissionMode ?? 'deny' }],
   }), { mode: 0o600 });
   const allowed = new Set(['SYSTEMROOT', 'WINDIR', 'COMSPEC', 'PATH', 'PATHEXT', 'TEMP', 'TMP',
     'APPDATA', 'LOCALAPPDATA', 'USERPROFILE', 'PROGRAMDATA', 'HOMEDRIVE', 'HOMEPATH', 'HOME', 'LANG', 'LC_ALL',
@@ -119,7 +121,7 @@ export async function launchRuntime(options: RuntimeOptions): Promise<RunningRun
       });
     });
     return {
-      version, workspace, root, stop,
+      version, workspace, root, stop, connection: { baseUrl: url, headers: { authorization } },
       async api(method, endpoint, body, signal) {
         if (!endpoint.startsWith('/api/') && endpoint !== '/openapi.json') throw new Error('Invalid runtime API path');
         const response = await fetch(url + endpoint, {

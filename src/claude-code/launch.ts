@@ -36,6 +36,9 @@ export function launchEnvironment(connection: Connection, model: CatalogModel, o
 export async function launchClaude(connection: Connection, model: CatalogModel, args: string[]): Promise<number> {
   if (args.some(arg => /^--(?:model|fallback-model)(?:=|$)/.test(arg))) throw new Error('Select the model before --; forwarded model overrides are unsupported');
   if (args.some(arg => /^--settings(?:=|$)/.test(arg))) throw new Error('The launcher owns --settings for gateway routing; normal saved user/project settings remain loaded');
+  if (args.some(arg => /^--(?:tools|allowedTools|disallowedTools|agent|agents|permission-mode|dangerously-skip-permissions|allow-dangerously-skip-permissions)(?:=|$)/.test(arg))) {
+    throw new Error('OpenCode executes the tools in session mode. Configure agents and permissions in OpenCode instead of forwarding Claude tool/permission flags.');
+  }
   const root = stateDirectory();
   await mkdir(root, { recursive: true, mode: 0o700 });
   const filename = path.join(root, `claude-launch-${randomUUID()}.json`);
@@ -44,7 +47,7 @@ export async function launchClaude(connection: Connection, model: CatalogModel, 
   await writeFile(filename, JSON.stringify({ env: gatewayOverrides(connection, model) }), { mode: 0o600, flag: 'wx' });
   const interrupted = () => {};
   try {
-    const child = spawn(claudeBinary(), ['--model', model.alias, '--settings', filename, ...args], {
+    const child = spawn(claudeBinary(), ['--model', model.alias, '--settings', filename, '--tools', '', ...args], {
       env: launchEnvironment(connection, model), stdio: 'inherit', windowsHide: false,
     });
     // The terminal delivers Ctrl+C to both; report the child's exit code.

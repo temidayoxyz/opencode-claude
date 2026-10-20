@@ -4,9 +4,13 @@ import type { OpenCodeAdapter, ModelTarget } from '../opencode/adapter.js';
 import { parseMessagesRequest, RequestError } from './messages.js';
 import { MessageStream } from './stream.js';
 import { ProviderError } from '../opencode/access.js';
+import type { SessionBackend } from '../opencode/sessions.js';
+import { clientRegistry, type ClientRegistry } from './clients.js';
 
 export interface GatewayOptions {
-  adapter: OpenCodeAdapter;
+  adapter?: OpenCodeAdapter;
+  sessions?: SessionBackend;
+  clients?: ClientRegistry;
   token: string;
   mappings: Record<string, ModelTarget>;
   models?: unknown;
@@ -54,14 +58,26 @@ export function providerFailure(cause: unknown): string {
   return 'OpenCode generation failed or returned an unsupported response. Check the selected model in OpenCode.';
 }
 export async function createGateway(options: GatewayOptions) {
+  if (!options.sessions && !options.adapter) throw new Error('No OpenCode backend configured');
+  const clients = options.clients ?? await clientRegistry();
   const instance = options.instance ?? randomBytes(16).toString('hex');
   const controllers = new Set<AbortController>();
   const server = createServer(async (request, response) => {
     if (request.headers.origin) return error(response, 403, 'Browser-origin requests are disabled');
     const credential = request.headers['x-api-key'];
-    if (!matches(request.headers.authorization, `Bearer ${options.token}`)
-      && !matches(typeof credential === 'string' ? credential : undefined, options.token)) return error(response, 401, 'Invalid local gateway credential');
-    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    const master = matches(request.headers.authorization, `Bearer ${options.token}`)
+      || matches(typeof credential === 'string' ? credential : undefined, options.token);
+    const bearer = request.headers.authorization?.startsWith('Bearer ') ? request.headers.authorization.slice(7) : undefined;
+    const context = master ? undefined : clients.authenticate(bearer ?? (typeof credential === 'string' ? credential : undefined));
+    if (!master && !context) return error(response, 401, 'Invalid local gateway credential');
+    let url: URL;
+    try { url = new URL(request.url ?? '/', 'http://127.0.0.1'); }
+    catch { return error(response, 400, 'Invalid request URL'); }
+    if (!master && url.pathname !== '/v1/messages' && url.pathname !== '/v1/models') return error(response, 403, 'Client credentials cannot manage the gateway');
+    if (master && request.method === 'POST' && url.pathname === '/_clients') {
+      try { return json(response, 200, await clients.register(await body(request))); }
+      catch { request.resume(); return error(response, 400, 'Cannot register client; check the workspace path and client settings'); }
+    }
     if (request.method === 'GET' && url.pathname === '/health') return json(response, 200, { application: 'opencode-claude', instance, pid: process.pid });
     if (request.method === 'GET' && url.pathname === '/_catalog') return json(response, 200, options.models ?? []);
     if (request.method === 'POST' && url.pathname === '/_shutdown' && options.shutdown) {
@@ -70,12 +86,13 @@ export async function createGateway(options: GatewayOptions) {
       return;
     }
     if (request.method === 'GET' && url.pathname === '/v1/models') return json(response, 200, {
-      data: Object.keys(options.mappings).map((id) => ({ id, type: 'model', display_name: id, created_at: '2026-10-20T00:00:00Z' })), has_more: false,
+      data: Object.keys(options.mappings).filter(id => !context || `${options.mappings[id]!.providerID}/${options.mappings[id]!.id}` === context.model)
+        .map((id) => ({ id, type: 'model', display_name: id, created_at: '2026-10-20T00:00:00Z' })), has_more: false,
     });
     if (request.method !== 'POST' || url.pathname !== '/v1/messages') return error(response, 404, 'Unsupported endpoint');
     const controller = new AbortController();
     controllers.add(controller);
-    const timeout = setTimeout(() => controller.abort(), 180000);
+    const timeout = setTimeout(() => controller.abort(), options.sessions ? 30 * 60 * 1000 : 180000);
     let ping: NodeJS.Timeout | undefined;
     response.once('close', () => { if (!response.writableEnded) controller.abort(); });
     try {
@@ -105,7 +122,10 @@ export async function createGateway(options: GatewayOptions) {
         }, 15000);
       }
       const stream = new MessageStream(parsed.model, parsed.tools.map((tool) => tool.name), parsed.stream ? write : undefined);
-      await options.adapter.generate(source, target, (frame) => stream.frame(frame), controller.signal);
+      if (options.sessions) {
+        if (!context) throw new RequestError('Launch a registered Claude client or use the smoke command');
+        await options.sessions.respond(parsed, target, context, stream, controller.signal);
+      } else await options.adapter!.generate(source, target, (frame) => stream.frame(frame), controller.signal);
       const result = await stream.finish();
       if (parsed.stream) response.end(); else json(response, 200, result);
     } catch (cause) {

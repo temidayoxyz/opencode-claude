@@ -38,6 +38,27 @@ export class MessageStream {
     await this.event('message_start', { message: { id: this.id, type: 'message', role: 'assistant', model: this.model,
       content: [], stop_reason: null, stop_sequence: null, usage: { input_tokens: 0, output_tokens: 0 } } });
   }
+  async text(delta: string): Promise<void> {
+    if (this.ended || this.reason) throw new Error('Content after completion');
+    this.size += Buffer.byteLength(delta);
+    if (this.size > 16 * 1024 * 1024) throw new Error('Model response exceeds the size limit');
+    if (!delta) return;
+    await this.start();
+    if (this.textIndex === undefined) {
+      this.textIndex = this.blocks.length;
+      this.blocks.push({ type: 'text', text: '' });
+      await this.event('content_block_start', { index: this.textIndex, content_block: { type: 'text', text: '' } });
+    }
+    const block = this.blocks[this.textIndex];
+    if (block?.type !== 'text') throw new Error('Invalid text state');
+    block.text += delta;
+    await this.event('content_block_delta', { index: this.textIndex, delta: { type: 'text_delta', text: delta } });
+  }
+  complete(usage: { input_tokens: number; output_tokens: number }): void {
+    if (this.reason || this.ended || Object.values(usage).some(n => !Number.isSafeInteger(n) || n < 0)) throw new Error('Invalid session completion');
+    this.usage = usage;
+    this.reason = 'stop';
+  }
   async frame(value: unknown): Promise<void> {
     if (this.ended) throw new Error('Response already completed');
     const frame = object(value);
