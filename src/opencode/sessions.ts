@@ -4,6 +4,7 @@ import type { V2Event } from '@opencode/client';
 import type { SessionJournal, Pending, Reply } from './journal.js';
 import type { NativeClient } from './connection.js';
 import { waitForSession } from './wait.js';
+import { ToolProgress } from './progress.js';
 import type { ModelTarget } from './adapter.js';
 import { accessReason, ProviderError } from './access.js';
 import { RequestError, type ParsedMessages, type ModelMessage } from '../gateway/messages.js';
@@ -128,6 +129,8 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         text += delta;
         writes = writes.then(() => sink.text(delta)).catch(cause => { writeError = cause; });
       };
+      const toolProgress = new ToolProgress(append);
+      const appendModelText = (delta: string) => { if (delta) toolProgress.flush(); append(delta); };
       let interrupting: Promise<void> | undefined;
       const interrupt = () => interrupting ??= client.session.interrupt({ sessionID: session.sessionID },
         { signal: AbortSignal.timeout(5000) }).then(() => {});
@@ -152,10 +155,10 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
             if (event.type === 'session.text.delta') {
               const k = event.data.assistantMessageID;
               streamed.set(k, (streamed.get(k) ?? '') + event.data.delta);
-              append(event.data.delta);
+              appendModelText(event.data.delta);
             } else if (event.type === 'session.tool.input.started' && !progress.has(event.data.id)) {
               progress.add(event.data.id);
-              append(`\n[OpenCode tool: ${event.data.name}]\n`);
+              toolProgress.tool(event.data.name);
             }
           } catch (cause) { writeError = cause; interrupted(); }
         });
@@ -224,9 +227,9 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
           const fullText = message.content.filter(part => part.type === 'text').map(part => part.text).join('');
           const previous = streamed.get(message.id) ?? '';
           if (!fullText.startsWith(previous)) throw new Error('OpenCode text stream disagrees with completed context');
-          append(fullText.slice(previous.length));
+          appendModelText(fullText.slice(previous.length));
           for (const part of message.content) {
-            if (part.type === 'tool' && !progress.has(part.id)) append(`\n[OpenCode tool: ${part.name}]\n`);
+            if (part.type === 'tool' && !progress.has(part.id)) { progress.add(part.id); toolProgress.tool(part.name); }
           }
           if (message.time?.completed) session.seen.add(message.id);
           if (message.tokens) {
@@ -234,6 +237,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
             usage.output_tokens += message.tokens.output;
           }
         }
+        toolProgress.flush();
         if (session.pending) {
           const { code, permission, form } = session.pending;
           append(permission

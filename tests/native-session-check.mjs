@@ -53,6 +53,8 @@ try {
   const permission = value.content[0].text;
   const code = /approve ([A-F0-9]{12})/.exec(permission)?.[1];
   assert.ok(code, permission);
+  assert.match(permission, /Updating files/);
+  assert.doesNotMatch(permission, /\[OpenCode tool:/);
   await assert.rejects(access(directory + '/proof.txt'));
   assert.equal((await fetch(gateway.url + '/_catalog', { headers: { 'x-api-key': token } })).status, 403);
   messages.push({ role: 'assistant', content: permission }, { role: 'user', content: `approve ${code}` });
@@ -61,6 +63,7 @@ try {
   assert.equal(response.status, 200, JSON.stringify(value));
   const answer = value.content[0].text;
   assert.match(answer, /READY_NATIVE_WRITE/);
+  assert.doesNotMatch(answer, /\[OpenCode tool:/);
   assert.equal(await readFile(directory + '/proof.txt', 'utf8'), 'ONE_NATIVE_WRITE');
   assert.equal(consumed, 1);
   assert.equal(writes, 1);
