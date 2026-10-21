@@ -94,9 +94,18 @@ export async function createFixture(options = {}) {
         }] : undefined;
         const controller = new AbortController();
         res.once('close', () => controller.abort());
-        const message = options.reply ? await options.reply(body, { signal: controller.signal }) : toolCalls
+        let keepAlive;
+        if (body.stream && options.keepAliveMs) {
+          res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
+          res.flushHeaders();
+          keepAlive = setInterval(() => { if (!res.destroyed) res.write(': fixture keepalive\n\n'); }, options.keepAliveMs);
+          res.once('close', () => clearInterval(keepAlive));
+        }
+        let message;
+        try { message = options.reply ? await options.reply(body, { signal: controller.signal }) : toolCalls
           ? { role: 'assistant', content: null, tool_calls: toolCalls }
           : { role: 'assistant', content: consumed ? 'EXTERNAL_COUNTER=1' : 'Fixture title' };
+        } finally { clearInterval(keepAlive); }
         const actualCalls = message.tool_calls;
         const finish = actualCalls ? 'tool_calls' : 'stop';
         const common = { id: `chatcmpl_fixture_${modelRequests}`, created: 1, model: 'probe' };
@@ -104,7 +113,7 @@ export async function createFixture(options = {}) {
         if (!body.stream) return respond(res, 200, {
           ...common, object: 'chat.completion', choices: [{ index: 0, message, finish_reason: finish }], usage,
         });
-        res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
+        if (!res.headersSent) res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache' });
         const delta = actualCalls
           ? { role: 'assistant', tool_calls: actualCalls.map((call, index) => ({ index, ...call })) }
           : message;
