@@ -21,7 +21,7 @@ Keep the checkout in place: npm may link global commands to a local directory. A
 
 ```sh
 npm pack --ignore-scripts
-npm install --global ./opencode-claude-0.2.0-dev.2.tgz --ignore-scripts
+npm install --global ./opencode-claude-0.2.0-dev.3.tgz --ignore-scripts
 ```
 
 A maintainer can attach that file to a GitHub release. No registry account or publication is needed. Each user supplies their own OpenCode installation and provider access; no keys belong in the repository or release.
@@ -90,3 +90,9 @@ Set `OPENCODE_CLAUDE_BIN` to OpenCode's **native executable**, and `CLAUDE_BIN` 
 - **Restart cannot bind the saved port:** quit the gateway and resolve the port conflict. Do not terminate an unrelated process blindly. To choose a new endpoint, move `endpoint.json` aside while the gateway is stopped, then relaunch clients.
 
 The private `sessions.json` journal contains reply text, native IDs, history hashes and pending permission details. Keep it private. It does not store frontend prompts or provider keys. Corrupt journals fail closed. Back up state before repair; deleting a journal loses retry protection and frontend continuation mappings. Cache limits persist across restarts. For a fresh isolated state directory, use `OPENCODE_CLAUDE_HOME` and start new frontend conversations; never replay an uncertain task without inspecting it in OpenCode first.
+
+## Longer agent tasks
+
+Version 0.2.0-dev.3 renews the read-only native wait request every 60 seconds. A single headerless request otherwise hits Node fetch's five-minute transport timeout, which interrupted the agent and caused protected HTTP 409 retries. Renewing a wait never resends a prompt, approves a tool, or repeats an action. Client cancellation and the 30-minute turn deadline still interrupt the matching native task.
+
+OpenCode permission codes belong to OpenCode, so Claude's `/permissions` dialog cannot answer them. Reply with the exact displayed `approve CODE` or `reject CODE` in the same chat while the native request is still pending. An expired request is reported before sending the reply; inspect that native session and existing files before starting new work. Protected failures include a native session ID for inspection. The gateway does not clear failed requests automatically.

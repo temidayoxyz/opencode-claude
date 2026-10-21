@@ -22,3 +22,11 @@ Add regression coverage for protocol and action-safety changes. Include the affe
 Keep provider keys, prompts, state, generated archives and native downloads out of commits. Report secrets privately as described in SECURITY.md. Keep changes scoped to opencode-claude; no bundled client binaries or provider accounts.
 
 Distribution uses source checkouts or locally built GitHub release archives. The package is private to prevent npm publication. Do not publish it to npm without the owner's explicit instruction.
+
+To reproduce the original five-minute transport cutoff against a real isolated native agent while also testing the corrected observation loop:
+
+```sh
+node tests/native-wait-check.mjs --long
+```
+
+This opt-in check takes just over five minutes, uses a localhost provider fixture, and expects exactly one native write. The ordinary runtime suite uses the shorter variant.

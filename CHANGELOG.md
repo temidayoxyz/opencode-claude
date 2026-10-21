@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0-dev.3 - 2026-10-21
+
+### Fixed
+
+- Keep agent tasks running past Node's five-minute header timeout by renewing only the read-only SDK wait request.
+- Preserve prompt deduplication, native tool ownership, cancellation and the existing 30-minute turn deadline.
+- Identify expired native approval/form requests before sending a stale response. Include native session IDs in protected-failure diagnostics.
+- Mark HTTP 409 conflicts non-retryable for clients that honor the standard retry header.
+- Recognize Windows Desktop 3.1623.0.0 after checking its installed inference configuration schema.
+
+Failed or interrupted conversations remain protected. Inspect their native history and existing files; this update does not replay them or grant approvals.
+
+
 ## 0.2.0-dev.2 - 2026-10-20
 
 - Accept Desktop frontend token budgets above 65,536 in native session mode. OpenCode controls actual generation limits.

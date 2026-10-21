@@ -2,7 +2,7 @@
 
 Use Claude as the interface to a genuine OpenCode agent session. OpenCode runs the selected model and executes its tools under your OpenCode configuration and permissions.
 
-**Experimental 0.2.0-dev.2.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
+**Experimental 0.2.0-dev.3.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
 
 ## Install from GitHub
 
@@ -59,7 +59,7 @@ Progress appears as text such as `[OpenCode tool: write]`. These are OpenCode ac
 
 - Real Claude Code with free DeepSeek: text and a native file task passed.
 - Local native OpenCode tests: permission relay, one file write, tool-result consumption, multiple turns and retry replay passed.
-- Windows Desktop 2.42304.2.0: dedicated profile, backup and restore are implemented and tested as file operations. Chat and Code UI checks remain pending.
+- Windows Desktop 2.42304.2.0 / 3.1623.0.0: dedicated profile, backup and restore are implemented and tested as file operations. Chat and Code UI checks remain pending.
 - Text and Messages streaming are supported. Images, documents, frontend thinking blocks, server tools and structured output are outside the current subset. Desktop thinking preferences are accepted; OpenCode controls actual reasoning.
 
 Completed conversations survive gateway restarts in the same running client, with the same credential and unchanged history. Start a new conversation after relaunching a client, editing an older branch or compacting its history. Conversations created before 0.2.0-dev.2 need a new frontend conversation once. Native conversations remain saved in OpenCode. Unknown histories are rejected. See [compatibility](docs/compatibility.md).

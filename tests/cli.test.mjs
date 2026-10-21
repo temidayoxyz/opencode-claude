@@ -11,7 +11,7 @@ const launch = (...args) => spawnSync(process.execPath, [cli, ...args], {
 test('CLI identifies the installed development build', () => {
   const result = launch('--version');
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /^opencode-claude 0\.2\.0-dev\.2\r?\n$/);
+  assert.match(result.stdout, /^opencode-claude 0\.2\.0-dev\.3\r?\n$/);
 });
 
 test('CLI help describes experimental commands and eligibility limits', () => {

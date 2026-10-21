@@ -1,3 +1,13 @@
+# 0.2.0-dev.3 verification - 2026-10-21
+
+The reported long Desktop task failure was traced through sanitized native context and Desktop stream diagnostics. Desktop's watchdog did not fire; the gateway emitted an in-band error after roughly 305 seconds while progress had recently arrived.
+
+Strict build/lint and 46 unit tests pass. Native tool/permission/form, cancellation, lifecycle and real Claude Code fixture checks pass. The new long native check held a provider step open for 310 seconds with normal provider keepalives. A parallel unmodified official SDK wait failed with UND_ERR_HEADERS_TIMEOUT. The production backend renewed its read-only wait six times, retained the same native execution, completed successfully, and wrote its proof file exactly once. No hosted inference was needed for this reproduction.
+
+Expired approval checks reject a stale reply before calling the permission API. Failed-request diagnostics preserve native session IDs. Dependency audit reports zero vulnerabilities. Windows Desktop 3.1623.0.0's installed profile schema was checked; full Desktop Chat/Code UI verification remains separate. The user's existing generated files were preserved; interrupted tasks and permission requests were not replayed or approved.
+
+---
+
 # Current release verification: 0.2.0-dev.2
 
 2026-10-20: strict build/lint and 41 unit tests pass. Genuine OpenCode runtime checks pass for tools, permissions, forms, cancellation and endpoint reuse. The real installed Claude Code fixture check passes with one native write. Dependency audit reports zero vulnerabilities. All 185 Git blobs in the public history were scanned: no recognized credential patterns, current local credentials or forbidden runtime artifacts were found.

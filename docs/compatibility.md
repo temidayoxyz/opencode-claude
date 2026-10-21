@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-Recorded 2026-10-20 for **0.2.0-dev.2**. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
+Updated 2026-10-21 for **0.2.0-dev.3**. Earlier client/model evidence was recorded 2026-10-20. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
 
 | Capability | Evidence |
 | --- | --- |
@@ -64,3 +64,11 @@ Version 0.1 replaced the system context and tool definitions for transient gener
 Windows Desktop requires an Anthropic-shaped inference route. Profiles therefore use `claude-sonnet-4-6-oc-<hash>` and label it with the selected OpenCode model name. The gateway resolves that route to the exact provider/model selected at launch. The family setting is a client configuration hint; it does not mean the backend is Sonnet or imply Opus-level benchmark performance. Claude Code uses the actual provider/model ID.
 
 Desktop UI verification remains pending. The profile and request-shape regressions are covered by automated tests; that evidence does not establish that every Chat or Code interaction works.
+
+## Five-minute task interruption diagnosis
+
+The reported Desktop failure arrived 305 seconds into a real task. Desktop recorded an in-band gateway error with 14 received events, a last delta 21 seconds earlier, and `watchdog_fired: false`. It then attempted non-streaming fallback calls, which correctly encountered the saved interrupted-request protection. This was not a Desktop idle-watchdog diagnosis.
+
+OpenCode's SDK wait endpoint sends no HTTP response headers until the native agent becomes idle. Node's built-in fetch transport defaults to a 300,000 ms header timeout ([Undici client options](https://github.com/nodejs/undici/blob/main/docs/docs/api/Client.md)). Version 0.2.0-dev.3 renews only that read-only wait every 60 seconds, keeping the original native session and task alive. It never resubmits a user prompt or tool call. Real client cancellation and the existing 30-minute turn deadline still interrupt the matching session.
+
+Expired permission/form replies are checked against OpenCode before submission. The standard `x-should-retry: false` header is included with HTTP 409 errors; custom client fallback loops may still require the user to start a new frontend conversation after inspecting native history. Older failed requests remain protected and are not automatically reset by an upgrade.
