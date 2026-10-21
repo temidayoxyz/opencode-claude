@@ -74,3 +74,27 @@ test('a cached provider denial remains a provider denial instead of becoming inv
     assert.equal(f.count().prompts, 1);
   } finally { await f.backend.close(); }
 });
+
+test('an expired native approval is identified before sending a stale permission reply', async () => {
+  let pending = true, replies = 0, prompts = 0;
+  const client = { session: {
+    async create() { return { id: 'ses_expired' }; }, async prompt() { prompts++; }, async context() { return []; },
+    async wait(input, { signal }) { await new Promise((resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true })); },
+    async interrupt() {}, async get() { return { outcome: 'interrupted' }; }, form: { async list() { return []; } },
+  }, permission: {
+    async list() { return pending ? [{ id: 'permission_one', action: 'write', resources: ['fixture.txt'] }] : []; },
+    async reply() { replies++;throw Error('Stale permission would return 404'); },
+  } };
+  const backend = createSessionBackend(client, { events: false });
+  const messages = [{ role: 'user', content: 'start' }];
+  const send = async () => { let output = '';await backend.respond(parseMessagesRequest({ model: 'alias', max_tokens: 1, messages }),
+    { providerID: 'fixture', id: 'probe' }, { id: 'one', kind: 'claude', directory: process.cwd(), model: 'fixture/probe' },
+    { async text(t) { output += t; }, complete() {} }, AbortSignal.timeout(5000));return output; };
+  try {
+    const text = await send();const code = /approve ([A-F0-9]{12})/.exec(text)[1];
+    pending = false;
+    messages.push({ role: 'assistant', content: text }, { role: 'user', content: 'approve ' + code });
+    await assert.rejects(send(), /no longer pending/);
+    assert.equal(replies, 0);assert.equal(prompts, 1);
+  } finally { await backend.close(); }
+});

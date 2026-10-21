@@ -26,6 +26,7 @@ test('a native session conflict is not reported as invalid model HTTP 400', asyn
     const response = await fetch(gateway.url + '/v1/messages', { method: 'POST', headers: { 'x-api-key': token },
       body: JSON.stringify({ model: 'alias', max_tokens: 32, thinking: { type: 'adaptive' }, messages: [{ role: 'user', content: 'Hello' }] }) });
     assert.equal(response.status, 409);
+    assert.equal(response.headers.get('x-should-retry'), 'false');
     assert.equal((await response.json()).error.type, 'api_error');
   } finally { await gateway.close(); }
 });

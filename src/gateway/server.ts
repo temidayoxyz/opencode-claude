@@ -28,6 +28,7 @@ function json(response: ServerResponse, status: number, value: unknown): void {
   response.end(JSON.stringify(value));
 }
 function error(response: ServerResponse, status: number, message: string): void {
+  if (status === 409) response.setHeader('x-should-retry', 'false');
   json(response, status, { type: 'error', error: { type: errorType(status), message } });
 }
 function errorType(status: number): string {

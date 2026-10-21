@@ -8,7 +8,7 @@ export interface Reply { text: string; usage: { input_tokens: number; output_tok
 export interface JournalState {
   version: 1;
   conversations: { sessionID: string; seen: string[]; tip?: string; pending?: Pending; blocked: boolean }[];
-  requests: { key: string; reply?: Reply; failure?: true; providerError?: { status: number; reason: AccessReason } }[];
+  requests: { key: string; sessionID?: string; reply?: Reply; failure?: true; providerError?: { status: number; reason: AccessReason } }[];
 }
 export interface SessionJournal { initial: JournalState; save(state: JournalState): Promise<void> }
 const hash = (s: unknown): s is string => typeof s === 'string' && /^[a-f0-9]{64}$/.test(s);
@@ -24,7 +24,7 @@ function validate(value: unknown): JournalState {
         || (!id(c.pending.permission?.id) && !id(c.pending.form?.id))))) throw new Error('Invalid session journal');
   }
   for (const r of s.requests) {
-    if (!r || !hash(r.key) || (r.failure !== undefined && r.failure !== true)
+    if (!r || !hash(r.key) || (r.sessionID !== undefined && !id(r.sessionID)) || (r.failure !== undefined && r.failure !== true)
       || (!r.reply && !r.failure) || (r.reply && (typeof r.reply.text !== 'string'
         || Buffer.byteLength(r.reply.text) > 8 * 1024 * 1024 || !r.reply.usage
         || ![r.reply.usage.input_tokens, r.reply.usage.output_tokens].every(n => Number.isSafeInteger(n) && n >= 0)))

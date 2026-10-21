@@ -3,6 +3,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import type { V2Event } from '@opencode/client';
 import type { SessionJournal, Pending, Reply } from './journal.js';
 import type { NativeClient } from './connection.js';
+import { waitForSession } from './wait.js';
 import type { ModelTarget } from './adapter.js';
 import { accessReason, ProviderError } from './access.js';
 import { RequestError, type ParsedMessages, type ModelMessage } from '../gateway/messages.js';
@@ -11,7 +12,7 @@ import type { ClientContext } from '../gateway/clients.js';
 interface Usage { input_tokens: number; output_tokens: number }
 export interface SessionSink { text(delta: string): Promise<void>; complete(usage: Usage): void }
 interface Conversation { sessionID: string; busy: boolean; pending?: Pending; seen: Set<string>; tip?: string; recovery?: boolean; inFlight?: Cached }
-interface Cached { reply?: Reply; failure?: true; busy?: true; providerError?: ProviderError }
+interface Cached { sessionID?: string; reply?: Reply; failure?: true; busy?: true; providerError?: ProviderError }
 const digest = (value: unknown) => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const zeroUsage = () => ({ input_tokens: 0, output_tokens: 0 });
 
@@ -49,7 +50,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
     await options.journal.save({ version: 1,
       conversations: [...owned].map(s => ({ sessionID: s.sessionID, seen: [...s.seen],
         blocked: !!s.recovery || !!s.inFlight?.busy, ...(s.tip ? { tip: s.tip } : {}), ...(s.pending ? { pending: s.pending } : {}) })),
-      requests: [...requests].map(([key, c]) => ({ key, ...(c.reply ? { reply: c.reply } : {}),
+      requests: [...requests].map(([key, c]) => ({ key, ...(c.sessionID ? { sessionID: c.sessionID } : {}), ...(c.reply ? { reply: c.reply } : {}),
         ...(c.failure || c.busy ? { failure: true as const } : {}),
         ...(c.providerError ? { providerError: { status: c.providerError.status, reason: c.providerError.reason } } : {}) })),
     });
@@ -78,9 +79,10 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       const namespace = [context.id, source.userId ?? '', context.model];
       const key = digest([namespace, history]);
       const cached = requests.get(key);
+      const inspection = cached?.sessionID ? ' OpenCode session: ' + cached.sessionID : '';
       if (cached?.busy) throw new RequestError('This request is already running; wait for it to finish', 409);
       if (cached?.providerError) throw cached.providerError;
-      if (cached?.failure) throw new RequestError('The previous attempt failed or was interrupted. Actions may have run; inspect the OpenCode session before sending a new prompt', 409);
+      if (cached?.failure) throw new RequestError('The previous attempt failed or was interrupted. Actions may have run; inspect the OpenCode session before sending a new prompt' + inspection, 409);
       if (cached?.reply) { await sink.text(cached.reply.text); sink.complete(cached.reply.usage); return; }
       if (requests.size >= 2048) throw new RequestError('Session cache is full; finish current work and restart the gateway');
       if (cachedBytes > 56 * 1024 * 1024) throw new RequestError('Reply cache is full; finish current work and restart the gateway');
@@ -109,6 +111,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
       const session = conversation;
       session.busy = true;
       session.inFlight = cache;
+      cache.sessionID = session.sessionID;
       let text = '';
       let size = 0;
       const usage = zeroUsage();
@@ -159,6 +162,10 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
         let answered = false;
         if (session.pending) {
           const pending = session.pending;
+          const exists = pending.permission
+            ? (await client.permission.list({ sessionID: session.sessionID }, { signal })).some(p => p.id === pending.permission!.id)
+            : (await client.session.form.list({ sessionID: session.sessionID }, { signal })).some(f => f.id === pending.form!.id);
+          if (!exists) throw new RequestError('This OpenCode approval or question is no longer pending. This reply was not sent; inspect the native session before continuing. OpenCode session: ' + session.sessionID, 409);
           const approval = /^(approve|reject) ([A-F0-9]{12})\s*$/.exec(prompt.trim());
           const answer = /^answer ([A-F0-9]{12}) (\{[\s\S]*\})\s*$/.exec(prompt.trim());
           if ((approval?.[2] ?? answer?.[1]) === pending.code) {
@@ -189,7 +196,7 @@ export function createSessionBackend(client: NativeClient, options: { events?: b
           const waitSignal = AbortSignal.any([signal, waitAbort.signal]);
           let idle = false;
           let waitError: unknown;
-          const waiting = client.session.wait({ sessionID: session.sessionID }, { signal: waitSignal })
+          const waiting = waitForSession(client, session.sessionID, waitSignal)
             .then(() => { idle = true; }, cause => { if (!waitAbort.signal.aborted) waitError = cause; });
           try {
             while (!idle) {
