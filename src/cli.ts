@@ -28,7 +28,7 @@ Usage:
 
 Requires Node 24+ and OpenCode 2.0.32. Connect providers in OpenCode first.
 Catalog availability does not guarantee access. Free-model restrictions still apply.
-Desktop automatic setup: Windows 2.42304.2.0; other versions export a profile.
+Desktop automatic setup: Windows 2.42304.2.0 / 3.1623.0.0; other versions export a profile.
 Distribution: GitHub only; npm registry publication is disabled.`;
 
 function requestedModel(values: string[]): string | undefined {
