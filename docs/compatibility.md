@@ -1,6 +1,6 @@
 # Compatibility and evidence
 
-Updated 2026-10-21 for **0.2.0-dev.3**. Earlier client/model evidence was recorded 2026-10-20. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
+Updated 2026-10-21 for **0.2.0-dev.4**. Earlier client/model evidence was recorded 2026-10-20. The default backend is a genuine OpenCode agent session using official SDK **2.0.32**. The earlier model-only adapter is superseded.
 
 | Capability | Evidence |
 | --- | --- |
@@ -25,7 +25,7 @@ OpenCode owns system instructions, provider protocol, agent configuration, tools
 
 Enabled, nondeprecated OpenCode models with agent tool support may use any provider protocol OpenCode supports. Listed free prices do not guarantee eligibility. Alias names do not make performance claims.
 
-Native text deltas become Messages events. Native tool names appear as progress text. Reasoning traces and tool outputs are not exposed as fabricated Claude tool calls. Completed context reconciles missed text. Usage comes from OpenCode's reported model-step counts, including cached input; local progress/permission text is not independently token-counted.
+Native text deltas become Messages events. Native tool activity becomes readable progress phases. Consecutive operations are grouped and summarized without exposing raw tool names in ordinary progress. Permission prompts retain the exact native action identifier. Reasoning traces and tool outputs are not exposed as fabricated Claude tool calls. Completed context reconciles missed text. Usage comes from OpenCode's reported model-step counts, including cached input; local progress/permission text is not independently token-counted.
 
 OpenCode generation settings govern the agent. Frontend system prompts, tool definitions, temperature, stop sequences and max-token settings are not imposed on the native request. Frontend thinking preferences and tool advertisements are accepted as client metadata. OpenCode keeps its own reasoning and tool configuration. Images, documents, frontend thinking content blocks, Anthropic server-tool execution, structured output, Claude-native tools and automatic Desktop VM path mapping are unsupported.
 
@@ -72,3 +72,11 @@ The reported Desktop failure arrived 305 seconds into a real task. Desktop recor
 OpenCode's SDK wait endpoint sends no HTTP response headers until the native agent becomes idle. Node's built-in fetch transport defaults to a 300,000 ms header timeout ([Undici client options](https://github.com/nodejs/undici/blob/main/docs/docs/api/Client.md)). Version 0.2.0-dev.3 renews only that read-only wait every 60 seconds, keeping the original native session and task alive. It never resubmits a user prompt or tool call. Real client cancellation and the existing 30-minute turn deadline still interrupt the matching session.
 
 Expired permission/form replies are checked against OpenCode before submission. The standard `x-should-retry: false` header is included with HTTP 409 errors; custom client fallback loops may still require the user to start a new frontend conversation after inspecting native history. Older failed requests remain protected and are not automatically reset by an upgrade.
+
+## Why native tool cards need a separate integration
+
+The current gateway carries an already-running OpenCode agent session. Anthropic's [client tool contract](https://platform.claude.com/docs/en/agents-and-tools/tool-use/how-tool-use-works) asks the frontend to execute returned tool calls and send tool results. Projecting an already-executed OpenCode edit into that contract can cause another execution attempt or an unavailable-tool error.
+
+The API also defines [server tools](https://platform.claude.com/docs/en/agents-and-tools/tool-use/server-tools), whose call/results are delivered within one response. That documented surface covers supported Anthropic server tools; no generic display-only block for arbitrary OpenCode operations was found. The current release does not represent native OpenCode edits as Anthropic built-ins.
+
+A separate [MCP integration](https://code.claude.com/docs/en/mcp) could expose a genuine Claude-facing tool that delegates an OpenCode task. That is a candidate architecture for native tool presentation, and would need client setup, tool-result handling, cancellation and permission verification. It is not implemented or verified by the current progress-formatting change.

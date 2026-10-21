@@ -21,7 +21,7 @@ Keep the checkout in place: npm may link global commands to a local directory. A
 
 ```sh
 npm pack --ignore-scripts
-npm install --global ./opencode-claude-0.2.0-dev.3.tgz --ignore-scripts
+npm install --global ./opencode-claude-0.2.0-dev.4.tgz --ignore-scripts
 ```
 
 A maintainer can attach that file to a GitHub release. No registry account or publication is needed. Each user supplies their own OpenCode installation and provider access; no keys belong in the repository or release.
@@ -96,3 +96,9 @@ The private `sessions.json` journal contains reply text, native IDs, history has
 Version 0.2.0-dev.3 renews the read-only native wait request every 60 seconds. A single headerless request otherwise hits Node fetch's five-minute transport timeout, which interrupted the agent and caused protected HTTP 409 retries. Renewing a wait never resends a prompt, approves a tool, or repeats an action. Client cancellation and the 30-minute turn deadline still interrupt the matching native task.
 
 OpenCode permission codes belong to OpenCode, so Claude's `/permissions` dialog cannot answer them. Reply with the exact displayed `approve CODE` or `reject CODE` in the same chat while the native request is still pending. An expired request is reported before sending the reply; inspect that native session and existing files before starting new work. Protected failures include a native session ID for inspection. The gateway does not clear failed requests automatically.
+
+## Progress display
+
+Version 0.2.0-dev.4 replaces raw tool names with readable progress phases and groups consecutive operations. A long group reports its count when more activity arrives after 30 seconds. Switching phases, native model text, or turn completion flushes the group. Summaries count observed operations; they do not claim that every operation succeeded. Explicit permission details still name the actual native action.
+
+Existing conversation text and cached replies are preserved for history/retry compatibility. New turns use the updated display. Full per-tool details remain in OpenCode's native history.

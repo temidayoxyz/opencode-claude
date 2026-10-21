@@ -1,3 +1,13 @@
+# 0.2.0-dev.4 verification - 2026-10-21
+
+Readable progress replaces raw native tool identifiers in ordinary activity output. Consecutive operations are grouped; count summaries flush at model-text, phase and turn boundaries, with bounded refresh when new activity arrives after 30 seconds. Permission details retain exact native action identifiers.
+
+Strict build/lint and 52 tests pass. Coverage includes label mapping, grouping, long-group refresh, response isolation, native event replay, context reconciliation and retry replay without another prompt. Real local native tool/permission/form, cancellation, short wait and installed Claude Code fixture checks pass. Native write counts and ownership remain unchanged.
+
+Official client/server tool contracts and Claude Code MCP documentation were reviewed. A generic display-only card contract for arbitrary OpenCode operations was not found. A separate Claude-facing MCP delegate is a candidate for native task-tool presentation; it is not implemented or UI-verified in this release. Actual Desktop Chat/Code UI checks remain separate.
+
+---
+
 # 0.2.0-dev.3 verification - 2026-10-21
 
 The reported long Desktop task failure was traced through sanitized native context and Desktop stream diagnostics. Desktop's watchdog did not fire; the gateway emitted an in-band error after roughly 305 seconds while progress had recently arrived.

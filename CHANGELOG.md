@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0-dev.4 - 2026-10-21
+
+### Changed
+
+- Replace raw internal tool names with readable progress phases for browsing, file work, commands, guidance and web lookups.
+- Group consecutive operations and emit count summaries at phase/text/turn boundaries. Long groups refresh their count when activity arrives after 30 seconds.
+- Preserve operation ordering, cached retry replies, native tool ownership and explicit permission details.
+- Document why generic native tool cards require a separate client integration rather than fabricated executable calls.
+
+
 ## 0.2.0-dev.3 - 2026-10-21
 
 ### Fixed

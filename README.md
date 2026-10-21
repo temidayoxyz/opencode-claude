@@ -2,7 +2,7 @@
 
 Use Claude as the interface to a genuine OpenCode agent session. OpenCode runs the selected model and executes its tools under your OpenCode configuration and permissions.
 
-**Experimental 0.2.0-dev.3.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
+**Experimental 0.2.0-dev.4.** On Windows, real Claude Code **2.1.296** passed text and a native file task using **`opencode/deepseek-v4.1-flash-free`** through OpenCode **2.0.32**. Desktop profile setup is implemented; Desktop chat and Code UI verification is pending. Other models and platforms require their own checks.
 
 ## Install from GitHub
 
@@ -53,7 +53,7 @@ approve A1B2C3D4E5F6
 
 Or `reject A1B2C3D4E5F6`. Approval applies once to that pending request. Native questions use `answer CODE {"field":"value"}` as shown in the response. Codes are handled locally and are never sent to the model as approval instructions.
 
-Progress appears as text such as `[OpenCode tool: write]`. These are OpenCode actions, rather than Claude-native executable tool cards. The workspace is the host directory from which you launched the command. Desktop Code's VM workspace is not automatically mapped to it.
+Progress uses readable phases such as "Opening a page..." and "Updating files...". Consecutive operations are grouped and summarized; counts describe operations, not files changed or successful outcomes. Native permission details retain the exact action identifier. The workspace is the host directory from which you launched the command. Desktop Code's VM workspace is not automatically mapped to it.
 
 ## What has been tested
 
